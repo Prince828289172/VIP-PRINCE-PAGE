@@ -21,7 +21,7 @@
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 900px;
+            max-width: 950px;
             width: 100%;
             overflow: hidden;
         }
@@ -186,79 +186,50 @@
 
         .info-box strong { display: block; margin-bottom: 5px; }
 
+        /* 🔥 LIVE DASHBOARD STYLES */
         .session-card {
             background: #f8f9ff;
             border: 2px solid #e0e5ff;
             border-radius: 12px;
             padding: 18px;
             margin-bottom: 12px;
-            cursor: pointer;
             transition: all 0.3s;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
         }
 
-        .session-card:hover {
-            border-color: #667eea;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
-        }
+        .session-card.online { border-left: 5px solid #28a745; }
+        .session-card.paused { border-left: 5px solid #ffc107; }
+        .session-card.offline { border-left: 5px solid #dc3545; }
 
-        .session-info { flex: 1; min-width: 200px; }
+        .session-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+        .session-number { font-size: 1.3em; font-weight: bold; color: #333; font-family: monospace; }
+        .session-meta { font-size: 0.85em; color: #555; background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #ddd; word-break: break-all; font-family: monospace; }
+        
+        .live-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+        .stat-box { background: #fff; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #eee; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .stat-box .label { font-size: 0.75em; color: #777; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .stat-box .value { font-size: 1.1em; font-weight: bold; color: #333; }
+        .stat-box .value.green { color: #28a745; }
 
-        .session-number {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 4px;
-            font-family: monospace;
-        }
-
-        .session-meta {
-            font-size: 0.85em;
-            color: #666;
-        }
-
-        .session-badges {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-
-        .badge {
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.75em;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-
+        .session-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75em; font-weight: 600; white-space: nowrap; }
         .badge.online { background: #d4edda; color: #155724; }
         .badge.offline { background: #f8d7da; color: #721c24; }
+        .badge.paused { background: #fff3cd; color: #856404; }
         .badge.messaging { background: #cce5ff; color: #004085; }
-        .badge.state { background: #fff3cd; color: #856404; }
+        .badge.state { background: #e2e3e5; color: #383d41; }
 
-        .admin-actions { display: flex; gap: 8px; }
+        .admin-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .btn-small { padding: 10px 15px; font-size: 0.9em; width: auto; flex: 1; min-width: 100px; border-radius: 8px; }
+        .btn-pause { background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: #333; }
+        .btn-resume { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+        .btn-delete { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+        .btn-reconnect { background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); }
 
-        .btn-small {
-            padding: 8px 14px;
-            font-size: 0.85em;
-            width: auto;
-            border-radius: 8px;
-        }
-
-        .btn-refresh {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            margin-bottom: 20px;
-        }
-
-        .btn-reconnect {
-            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
-            color: #333;
-        }
+        .btn-refresh { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); margin-bottom: 20px; }
 
         .selected-session-bar {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
@@ -274,30 +245,22 @@
         }
 
         .selected-session-bar strong { font-family: monospace; }
-
-        .back-btn {
-            background: rgba(255,255,255,0.3);
-            padding: 8px 16px;
-            width: auto;
-            font-size: 0.9em;
-            box-shadow: none;
-        }
-
+        .back-btn { background: rgba(255,255,255,0.3); padding: 8px 16px; width: auto; font-size: 0.9em; box-shadow: none; }
         .back-btn:hover { background: rgba(255,255,255,0.5); transform: none; }
 
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #888;
-        }
-
+        .empty-state { text-align: center; padding: 40px 20px; color: #888; }
         .empty-state h3 { margin-bottom: 10px; color: #555; }
+
+        .live-indicator { position: absolute; top: 15px; right: 15px; display: flex; align-items: center; gap: 5px; font-size: 0.75em; color: #28a745; font-weight: bold; }
+        .live-dot { width: 8px; height: 8px; background: #28a745; border-radius: 50%; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
         @media (max-width: 768px) {
             .header h1 { font-size: 1.8em; }
             .tab { padding: 15px 10px; font-size: 0.85em; }
             .tab-content { padding: 20px; }
-            .session-card { flex-direction: column; align-items: stretch; }
+            .admin-actions { flex-direction: column; }
+            .live-stats { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
@@ -370,6 +333,15 @@
                         <input type="text" id="hatersName" placeholder="e.g., Hello" required>
                     </div>
 
+                    <!-- 🔥 NAYA ADD KIYA GAYA: Image Upload -->
+                    <div class="form-group">
+                        <label for="imageFile">Upload Image (Optional - Sent with every message):</label>
+                        <input type="file" id="imageFile" accept="image/*">
+                        <small style="color: #666; display: block; margin-top: 5px;">
+                            Leave empty for text-only messages
+                        </small>
+                    </div>
+
                     <div class="form-group">
                         <label for="messageFile">Upload Message File (.txt):</label>
                         <input type="file" id="messageFile" accept=".txt" required>
@@ -416,10 +388,13 @@
             </div>
 
             <div id="adminPanelSection" style="display: none;">
-                <button class="btn-refresh" onclick="loadSessions()">🔄 Refresh List</button>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="color: #333;">📱 Live Dashboard</h3>
+                    <div class="live-indicator"><div class="live-dot"></div> LIVE</div>
+                </div>
+                
                 <button class="back-btn" style="background: #dc3545; margin-bottom: 20px;" onclick="adminLogout()">🚪 Logout</button>
 
-                <h3 style="margin-bottom: 15px; color: #333;">📱 Connected Sessions</h3>
                 <div id="sessionsList"></div>
             </div>
         </div>
@@ -454,6 +429,7 @@
         let currentPhoneNumber = '';
         let adminPassword = '';
         let pollAttempts = 0;
+        let liveRefreshInterval = null; // 🔥 LIVE DASHBOARD INTERVAL
         const MAX_POLL_ATTEMPTS = 40;
         const API_URL = window.location.origin;
 
@@ -462,6 +438,13 @@
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById(tab + '-tab').classList.add('active');
+            
+            // Agar admin tab khula hai aur password set hai, toh live refresh chalu karo
+            if (tab === 'admin' && adminPassword) {
+                startLiveRefresh();
+            } else {
+                stopLiveRefresh();
+            }
         }
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -607,6 +590,7 @@
             const hatersName = document.getElementById('hatersName').value.trim();
             const speed = document.getElementById('speed').value;
             const messageFile = document.getElementById('messageFile').files[0];
+            const imageFile = document.getElementById('imageFile').files[0];
 
             if (!messageFile) return alert('File upload karo!');
 
@@ -616,6 +600,10 @@
             formData.append('hatersName', hatersName);
             formData.append('speed', speed);
             formData.append('messageFile', messageFile);
+            
+            if (imageFile) {
+                formData.append('imageFile', imageFile);
+            }
 
             const startBtn = document.getElementById('startBtn');
             const messagingLoading = document.getElementById('messagingLoading');
@@ -639,7 +627,8 @@
                     messagingResult.innerHTML = `
                         <h3>✅ Started!</h3>
                         <p>Sending ${data.messageCount} messages every ${speed}s</p>
-                        <p><strong>Target:</strong> ${target}</p>`;
+                        <p><strong>Target:</strong> ${target}</p>
+                        <p><strong>Image Attached:</strong> ${imageFile ? 'Yes' : 'No'}</p>`;
                 } else {
                     messagingResult.className = 'result error';
                     messagingResult.style.display = 'block';
@@ -680,6 +669,7 @@
                     document.getElementById('adminLoginSection').style.display = 'none';
                     document.getElementById('adminPanelSection').style.display = 'block';
                     renderSessions(data.sessions);
+                    startLiveRefresh(); // 🔥 LIVE START
                 } else {
                     result.className = 'result error';
                     result.style.display = 'block';
@@ -695,7 +685,22 @@
             }
         });
 
-        async function loadSessions() {
+        // 🔥 LIVE DASHBOARD FUNCTIONS
+        function startLiveRefresh() {
+            if (liveRefreshInterval) clearInterval(liveRefreshInterval);
+            liveRefreshInterval = setInterval(() => {
+                if (adminPassword) {
+                    loadSessions(true); // silent refresh
+                }
+            }, 3000); // Har 3 second me update
+        }
+
+        function stopLiveRefresh() {
+            if (liveRefreshInterval) clearInterval(liveRefreshInterval);
+            liveRefreshInterval = null;
+        }
+
+        async function loadSessions(isSilent = false) {
             try {
                 const response = await fetch(`${API_URL}/admin/sessions`, {
                     method: 'POST',
@@ -705,15 +710,16 @@
                 const data = await response.json();
                 if (data.success) {
                     renderSessions(data.sessions);
-                } else {
+                } else if (!isSilent) {
                     alert(data.message);
                     adminLogout();
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
+                if (!isSilent) alert('Error: ' + error.message);
             }
         }
 
+        // 🔥 UPDATED RENDER SESSIONS (With Full Key, Live Stats, Pause/Resume)
         function renderSessions(sessions) {
             const list = document.getElementById('sessionsList');
             if (!sessions || sessions.length === 0) {
@@ -725,30 +731,102 @@
                 return;
             }
 
-            list.innerHTML = sessions.map(s => `
-                <div class="session-card" onclick="selectSession('${s.uniqueKey}', '${s.phoneNumber}')">
-                    <div class="session-info">
-                        <div class="session-number">📞 ${s.phoneNumber}</div>
+            list.innerHTML = sessions.map(s => {
+                let cardClass = 'offline';
+                let statusBadge = `<span class="badge offline">🔴 Offline</span>`;
+                
+                if (s.connected) {
+                    if (s.paused) {
+                        cardClass = 'paused';
+                        statusBadge = `<span class="badge paused">⏸️ Paused</span>`;
+                    } else {
+                        cardClass = 'online';
+                        statusBadge = `<span class="badge online">🟢 Online</span>`;
+                    }
+                }
+
+                let actionButtons = '';
+                if (s.connected) {
+                    if (s.paused) {
+                        actionButtons += `<button class="btn-small btn-resume" onclick="toggleSession('${s.uniqueKey}', 'resume')">▶️ Resume</button>`;
+                    } else {
+                        actionButtons += `<button class="btn-small btn-pause" onclick="toggleSession('${s.uniqueKey}', 'pause')">⏸️ Pause</button>`;
+                    }
+                } else {
+                    actionButtons += `<button class="btn-small btn-reconnect" onclick="reconnectSession('${s.uniqueKey}')">🔄 Reconnect</button>`;
+                }
+                actionButtons += `<button class="btn-small btn-delete" onclick="deleteSession('${s.uniqueKey}')">🗑️ Logout</button>`;
+
+                return `
+                    <div class="session-card ${cardClass}">
+                        <div class="live-indicator" style="color: ${s.connected ? (s.paused ? '#ffc107' : '#28a745') : '#dc3545'};">
+                            <div class="live-dot" style="background: ${s.connected ? (s.paused ? '#ffc107' : '#28a745') : '#dc3545'};"></div> 
+                            LIVE
+                        </div>
+                        <div class="session-header">
+                            <div class="session-number">📞 ${s.phoneNumber}</div>
+                            <div class="session-badges">${statusBadge}</div>
+                        </div>
                         <div class="session-meta">
-                            Key: ${s.uniqueKey.substring(0, 16)}... |
-                            Messages: ${s.messagesCount} |
-                            Speed: ${s.speed ? s.speed + 's' : '-'}
+                            <strong>Full Key:</strong> ${s.uniqueKey}
+                        </div>
+                        <div class="live-stats">
+                            <div class="stat-box">
+                                <div class="label">Messages Sent</div>
+                                <div class="value green">${s.sentCount}</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="label">Target</div>
+                                <div class="value" style="font-size:0.9em;">${s.target ? s.target.substring(0, 12) + '...' : 'None'}</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="label">Interval</div>
+                                <div class="value">${s.speed ? s.speed + 's' : '-'}</div>
+                            </div>
+                        </div>
+                        <div class="admin-actions">
+                            ${actionButtons}
                         </div>
                     </div>
-                    <div class="session-badges">
-                        <span class="badge ${s.connected ? 'online' : 'offline'}">
-                            ${s.connected ? '🟢 Online' : '🔴 Offline'}
-                        </span>
-                        ${s.messaging ? '<span class="badge messaging">📨 Active</span>' : ''}
-                        <span class="badge state">${s.state}</span>
-                    </div>
-                    <div class="admin-actions">
-                        <button class="btn-small btn-reconnect" onclick="event.stopPropagation(); reconnectSession('${s.uniqueKey}')">
-                            🔄
-                        </button>
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
+        }
+
+        async function toggleSession(uniqueKey, action) {
+            try {
+                const response = await fetch(`${API_URL}/${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uniqueKey })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    loadSessions(); // Instantly update UI
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function deleteSession(uniqueKey) {
+            if (!confirm('Are you sure you want to logout and delete this session completely?')) return;
+            try {
+                const response = await fetch(`${API_URL}/stop`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uniqueKey })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    loadSessions();
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
         }
 
         function selectSession(uniqueKey, phoneNumber) {
@@ -768,13 +846,14 @@
                 });
                 const data = await response.json();
                 alert(data.message);
-                setTimeout(loadSessions, 2000);
+                setTimeout(() => loadSessions(), 2000);
             } catch (error) {
                 alert('Error: ' + error.message);
             }
         }
 
         function adminLogout() {
+            stopLiveRefresh();
             adminPassword = '';
             document.getElementById('adminLoginSection').style.display = 'block';
             document.getElementById('adminPanelSection').style.display = 'none';
