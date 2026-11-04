@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Tool by Prince Don</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { font-size: 1.1em; opacity: 0.9; }
+
+        .tabs {
+            display: flex;
+            background: #f5f5f5;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+            border: none;
+            background: transparent;
+        }
+
+        .tab:hover { background: #e0e0e0; }
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .tab-content { display: none; padding: 40px; animation: fadeIn 0.5s; }
+        .tab-content.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group { margin-bottom: 25px; }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1em;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="password"],
+        input[type="file"],
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        button:active { transform: translateY(0); }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result.success { background: #d4edda; border: 2px solid #c3e6cb; color: #155724; }
+        .result.error { background: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; }
+        .result.info { background: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460; }
+
+        .pairing-code {
+            font-size: 2em;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 3px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+
+        .key-display {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            word-break: break-all;
+            font-family: monospace;
+            border: 2px solid #667eea;
+        }
+
+        .loading { display: none; text-align: center; margin: 20px 0; }
+        .loading.active { display: block; }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .info-box strong { display: block; margin-bottom: 5px; }
+
+        .session-card {
+            background: #f8f9ff;
+            border: 2px solid #e0e5ff;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .session-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .session-info { flex: 1; min-width: 200px; }
+
+        .session-number {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+            font-family: monospace;
+        }
+
+        .session-meta {
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .session-badges {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge.online { background: #d4edda; color: #155724; }
+        .badge.offline { background: #f8d7da; color: #721c24; }
+        .badge.messaging { background: #cce5ff; color: #004085; }
+        .badge.state { background: #fff3cd; color: #856404; }
+
+        .admin-actions { display: flex; gap: 8px; }
+
+        .btn-small {
+            padding: 8px 14px;
+            font-size: 0.85em;
+            width: auto;
+            border-radius: 8px;
+        }
+
+        .btn-refresh {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            margin-bottom: 20px;
+        }
+
+        .btn-reconnect {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: #333;
+        }
+
+        .selected-session-bar {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .selected-session-bar strong { font-family: monospace; }
+
+        .back-btn {
+            background: rgba(255,255,255,0.3);
+            padding: 8px 16px;
+            width: auto;
+            font-size: 0.9em;
+            box-shadow: none;
+        }
+
+        .back-btn:hover { background: rgba(255,255,255,0.5); transform: none; }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+        }
+
+        .empty-state h3 { margin-bottom: 10px; color: #555; }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8em; }
+            .tab { padding: 15px 10px; font-size: 0.85em; }
+            .tab-content { padding: 20px; }
+            .session-card { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>WhatsApp Messaging Tool</h1>
+            <p>Automate your WhatsApp messages with ease</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('start', this)">▶️ Start</button>
+            <button class="tab" onclick="switchTab('admin', this)">🔐 Admin</button>
+            <button class="tab" onclick="switchTab('stop', this)">⏹️ Stop</button>
+        </div>
+
+        <div id="start-tab" class="tab-content active">
+            <div class="info-box">
+                <strong>📱 How to use:</strong>
+                1. Phone number daalo (country code ke saath)<br>
+                2. Pairing code lo aur link karo<br>
+                3. Target select karo, file upload karo<br>
+                4. Start karo!
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="phoneNumber">Phone Number (with country code):</label>
+                    <input type="text" id="phoneNumber" placeholder="e.g., 919876543210" required>
+                </div>
+                <button type="submit" id="loginBtn">🔗 Connect WhatsApp</button>
+            </form>
+
+            <div class="loading" id="loginLoading">
+                <div class="spinner"></div>
+                <p>Connecting to WhatsApp...</p>
+            </div>
+
+            <div id="loginResult" class="result"></div>
+
+            <div id="messagingSection" style="display: none;">
+                <hr style="margin: 30px 0; border: none; border-top: 2px solid #eee;">
+
+                <div class="selected-session-bar">
+                    <div>
+                        <div style="font-size: 0.85em; opacity: 0.9;">Selected Session</div>
+                        <strong id="selectedNumberDisplay">-</strong>
+                    </div>
+                    <button class="back-btn" onclick="deselectSession()">✕ Change</button>
+                </div>
+
+                <form id="messagingForm">
+                    <div class="form-group">
+                        <label for="target">Target (Group ID or Phone Number):</label>
+                        <input type="text" id="target" placeholder="e.g., 120363XXXXXX@g.us or 919876543210" required>
+                        <button type="button" onclick="fetchGroups()" style="margin-top: 10px; background: #28a745;">
+                            📋 Fetch My Groups
+                        </button>
+                    </div>
+
+                    <div id="groupsList" style="display: none; margin-top: 15px;">
+                        <label>Select Group:</label>
+                        <select id="groupSelect" onchange="selectGroup()">
+                            <option value="">-- Select a group --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="hatersName">Prefix (Haters Name):</label>
+                        <input type="text" id="hatersName" placeholder="e.g., Hello" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="messageFile">Upload Message File (.txt):</label>
+                        <input type="file" id="messageFile" accept=".txt" required>
+                        <small style="color: #666; display: block; margin-top: 5px;">
+                            Each line = separate message
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="speed">Message Interval (seconds):</label>
+                        <input type="number" id="speed" min="1" value="5" required>
+                    </div>
+
+                    <button type="submit" id="startBtn">🚀 Start Messaging</button>
+                </form>
+
+                <div class="loading" id="messagingLoading">
+                    <div class="spinner"></div>
+                    <p>Starting automation...</p>
+                </div>
+
+                <div id="messagingResult" class="result"></div>
+            </div>
+        </div>
+
+        <div id="admin-tab" class="tab-content">
+            <div id="adminLoginSection">
+                <div class="info-box">
+                    <strong>🔐 Admin Access:</strong>
+                    Password daalein sessions dekhne ke liye.
+                </div>
+                <form id="adminLoginForm">
+                    <div class="form-group">
+                        <label for="adminPassword">Admin Password:</label>
+                        <input type="password" id="adminPassword" placeholder="Enter admin password" required>
+                    </div>
+                    <button type="submit" id="adminLoginBtn">🔓 Login</button>
+                </form>
+                <div class="loading" id="adminLoginLoading">
+                    <div class="spinner"></div>
+                    <p>Verifying...</p>
+                </div>
+                <div id="adminLoginResult" class="result"></div>
+            </div>
+
+            <div id="adminPanelSection" style="display: none;">
+                <button class="btn-refresh" onclick="loadSessions()">🔄 Refresh List</button>
+                <button class="back-btn" style="background: #dc3545; margin-bottom: 20px;" onclick="adminLogout()">🚪 Logout</button>
+
+                <h3 style="margin-bottom: 15px; color: #333;">📱 Connected Sessions</h3>
+                <div id="sessionsList"></div>
+            </div>
+        </div>
+
+        <div id="stop-tab" class="tab-content">
+            <div class="info-box">
+                <strong>⚠️ Stop Process:</strong>
+                Unique key daalo ya admin panel se select karo.
+            </div>
+
+            <form id="stopForm">
+                <div class="form-group">
+                    <label for="stopKey">Unique Key:</label>
+                    <input type="text" id="stopKey" placeholder="Enter unique key" required>
+                </div>
+                <button type="submit" id="stopBtn" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
+                    ⏹️ Stop Process
+                </button>
+            </form>
+
+            <div class="loading" id="stopLoading">
+                <div class="spinner"></div>
+                <p>Stopping...</p>
+            </div>
+
+            <div id="stopResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentUniqueKey = '';
+        let currentPhoneNumber = '';
+        let adminPassword = '';
+        let pollAttempts = 0;
+        const MAX_POLL_ATTEMPTS = 40;
+        const API_URL = window.location.origin;
+
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(tab + '-tab').classList.add('active');
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const phoneNumber = document.getElementById('phoneNumber').value.trim();
+            const loginBtn = document.getElementById('loginBtn');
+            const loginLoading = document.getElementById('loginLoading');
+            const loginResult = document.getElementById('loginResult');
+
+            loginBtn.disabled = true;
+            loginLoading.classList.add('active');
+            loginResult.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneNumber })
+                });
+                const data = await response.json();
+                loginLoading.classList.remove('active');
+
+                if (data.success) {
+                    currentUniqueKey = data.uniqueKey;
+                    currentPhoneNumber = phoneNumber;
+                    loginResult.className = 'result success';
+                    loginResult.style.display = 'block';
+
+                    if (data.connected) {
+                        loginResult.innerHTML = `
+                            <h3>✅ Connected!</h3>
+                            <div class="key-display"><strong>Unique Key:</strong><br>${currentUniqueKey}</div>
+                            <p>Save this key to stop later.</p>`;
+                        showMessagingSection();
+                    } else if (data.pairingCode) {
+                        loginResult.innerHTML = `
+                            <h3>🔐 Pairing Code</h3>
+                            <div class="pairing-code">${data.pairingCode}</div>
+                            <div class="key-display"><strong>Unique Key:</strong><br>${currentUniqueKey}</div>
+                            <p>WhatsApp → Settings → Linked Devices → Link a Device</p>`;
+                        pollAttempts = 0;
+                        setTimeout(() => checkConnectionStatus(), 3000);
+                    }
+                } else {
+                    loginResult.className = 'result error';
+                    loginResult.style.display = 'block';
+                    loginResult.innerHTML = `<strong>❌ Error:</strong> ${data.message}`;
+                    loginBtn.disabled = false;
+                }
+            } catch (error) {
+                loginLoading.classList.remove('active');
+                loginResult.className = 'result error';
+                loginResult.style.display = 'block';
+                loginResult.innerHTML = `<strong>❌ Error:</strong> ${error.message}`;
+                loginBtn.disabled = false;
+            }
+        });
+
+        async function checkConnectionStatus() {
+            if (!currentUniqueKey) return;
+            if (pollAttempts >= MAX_POLL_ATTEMPTS) {
+                const loginResult = document.getElementById('loginResult');
+                loginResult.className = 'result error';
+                loginResult.innerHTML = '<strong>⏱️ Timeout:</strong> Pairing code expire ho gaya. Dobara try karo.';
+                document.getElementById('loginBtn').disabled = false;
+                return;
+            }
+            pollAttempts++;
+
+            try {
+                const response = await fetch(`${API_URL}/getGroupUID`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uniqueKey: currentUniqueKey })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    pollAttempts = 0;
+                    const loginResult = document.getElementById('loginResult');
+                    loginResult.className = 'result success';
+                    loginResult.innerHTML = `
+                        <h3>✅ Connected!</h3>
+                        <div class="key-display"><strong>Unique Key:</strong><br>${currentUniqueKey}</div>`;
+                    showMessagingSection();
+                } else {
+                    setTimeout(() => checkConnectionStatus(), 3000);
+                }
+            } catch (error) {
+                setTimeout(() => checkConnectionStatus(), 3000);
+            }
+        }
+
+        function showMessagingSection() {
+            document.getElementById('messagingSection').style.display = 'block';
+            document.getElementById('selectedNumberDisplay').textContent = currentPhoneNumber || currentUniqueKey.substring(0, 16) + '...';
+        }
+
+        function deselectSession() {
+            currentUniqueKey = '';
+            currentPhoneNumber = '';
+            document.getElementById('messagingSection').style.display = 'none';
+            document.getElementById('loginResult').style.display = 'none';
+            document.getElementById('phoneNumber').value = '';
+            document.getElementById('loginBtn').disabled = false;
+            document.getElementById('messagingForm').reset();
+        }
+
+        async function fetchGroups() {
+            if (!currentUniqueKey) return alert('Pehle session select karo!');
+            try {
+                const response = await fetch(`${API_URL}/getGroupUID`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uniqueKey: currentUniqueKey })
+                });
+                const data = await response.json();
+                if (data.success && data.groupUIDs) {
+                    const groupSelect = document.getElementById('groupSelect');
+                    groupSelect.innerHTML = '<option value="">-- Select a group --</option>';
+                    data.groupUIDs.forEach(group => {
+                        const option = document.createElement('option');
+                        option.value = group.groupId;
+                        option.textContent = group.groupName;
+                        groupSelect.appendChild(option);
+                    });
+                    document.getElementById('groupsList').style.display = 'block';
+                } else {
+                    alert('Error: ' + (data.message || 'Unknown'));
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function selectGroup() {
+            const val = document.getElementById('groupSelect').value;
+            if (val) document.getElementById('target').value = val;
+        }
+
+        document.getElementById('messagingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const target = document.getElementById('target').value.trim();
+            const hatersName = document.getElementById('hatersName').value.trim();
+            const speed = document.getElementById('speed').value;
+            const messageFile = document.getElementById('messageFile').files[0];
+
+            if (!messageFile) return alert('File upload karo!');
+
+            const formData = new FormData();
+            formData.append('uniqueKey', currentUniqueKey);
+            formData.append('target', target);
+            formData.append('hatersName', hatersName);
+            formData.append('speed', speed);
+            formData.append('messageFile', messageFile);
+
+            const startBtn = document.getElementById('startBtn');
+            const messagingLoading = document.getElementById('messagingLoading');
+            const messagingResult = document.getElementById('messagingResult');
+
+            startBtn.disabled = true;
+            messagingLoading.classList.add('active');
+            messagingResult.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_URL}/startMessaging`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                messagingLoading.classList.remove('active');
+
+                if (data.success) {
+                    messagingResult.className = 'result success';
+                    messagingResult.style.display = 'block';
+                    messagingResult.innerHTML = `
+                        <h3>✅ Started!</h3>
+                        <p>Sending ${data.messageCount} messages every ${speed}s</p>
+                        <p><strong>Target:</strong> ${target}</p>`;
+                } else {
+                    messagingResult.className = 'result error';
+                    messagingResult.style.display = 'block';
+                    messagingResult.innerHTML = `<strong>❌ Error:</strong> ${data.message}`;
+                    startBtn.disabled = false;
+                }
+            } catch (error) {
+                messagingLoading.classList.remove('active');
+                messagingResult.className = 'result error';
+                messagingResult.style.display = 'block';
+                messagingResult.innerHTML = `<strong>❌ Error:</strong> ${error.message}`;
+                startBtn.disabled = false;
+            }
+        });
+
+        document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pwd = document.getElementById('adminPassword').value;
+            const btn = document.getElementById('adminLoginBtn');
+            const loading = document.getElementById('adminLoginLoading');
+            const result = document.getElementById('adminLoginResult');
+
+            btn.disabled = true;
+            loading.classList.add('active');
+            result.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_URL}/admin/sessions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pwd })
+                });
+                const data = await response.json();
+                loading.classList.remove('active');
+
+                if (data.success) {
+                    adminPassword = pwd;
+                    document.getElementById('adminLoginSection').style.display = 'none';
+                    document.getElementById('adminPanelSection').style.display = 'block';
+                    renderSessions(data.sessions);
+                } else {
+                    result.className = 'result error';
+                    result.style.display = 'block';
+                    result.innerHTML = `<strong>❌</strong> ${data.message}`;
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                loading.classList.remove('active');
+                result.className = 'result error';
+                result.style.display = 'block';
+                result.innerHTML = `<strong>❌</strong> ${error.message}`;
+                btn.disabled = false;
+            }
+        });
+
+        async function loadSessions() {
+            try {
+                const response = await fetch(`${API_URL}/admin/sessions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    renderSessions(data.sessions);
+                } else {
+                    alert(data.message);
+                    adminLogout();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function renderSessions(sessions) {
+            const list = document.getElementById('sessionsList');
+            if (!sessions || sessions.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <h3>😴 Koi session nahi mila</h3>
+                        <p>Start tab se pehle koi WhatsApp connect karo.</p>
+                    </div>`;
+                return;
+            }
+
+            list.innerHTML = sessions.map(s => `
+                <div class="session-card" onclick="selectSession('${s.uniqueKey}', '${s.phoneNumber}')">
+                    <div class="session-info">
+                        <div class="session-number">📞 ${s.phoneNumber}</div>
+                        <div class="session-meta">
+                            Key: ${s.uniqueKey.substring(0, 16)}... |
+                            Messages: ${s.messagesCount} |
+                            Speed: ${s.speed ? s.speed + 's' : '-'}
+                        </div>
+                    </div>
+                    <div class="session-badges">
+                        <span class="badge ${s.connected ? 'online' : 'offline'}">
+                            ${s.connected ? '🟢 Online' : '🔴 Offline'}
+                        </span>
+                        ${s.messaging ? '<span class="badge messaging">📨 Active</span>' : ''}
+                        <span class="badge state">${s.state}</span>
+                    </div>
+                    <div class="admin-actions">
+                        <button class="btn-small btn-reconnect" onclick="event.stopPropagation(); reconnectSession('${s.uniqueKey}')">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectSession(uniqueKey, phoneNumber) {
+            currentUniqueKey = uniqueKey;
+            currentPhoneNumber = phoneNumber;
+            switchTab('start', document.querySelectorAll('.tab')[0]);
+            showMessagingSection();
+            document.getElementById('loginResult').style.display = 'none';
+        }
+
+        async function reconnectSession(uniqueKey) {
+            try {
+                const response = await fetch(`${API_URL}/admin/reconnect`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword, uniqueKey })
+                });
+                const data = await response.json();
+                alert(data.message);
+                setTimeout(loadSessions, 2000);
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function adminLogout() {
+            adminPassword = '';
+            document.getElementById('adminLoginSection').style.display = 'block';
+            document.getElementById('adminPanelSection').style.display = 'none';
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('adminLoginBtn').disabled = false;
+            document.getElementById('adminLoginResult').style.display = 'none';
+        }
+
+        document.getElementById('stopForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const stopKey = document.getElementById('stopKey').value.trim();
+            const btn = document.getElementById('stopBtn');
+            const loading = document.getElementById('stopLoading');
+            const result = document.getElementById('stopResult');
+
+            btn.disabled = true;
+            loading.classList.add('active');
+            result.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_URL}/stop`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uniqueKey: stopKey })
+                });
+                const data = await response.json();
+                loading.classList.remove('active');
+
+                if (data.success) {
+                    result.className = 'result success';
+                    result.style.display = 'block';
+                    result.innerHTML = `<h3>✅ Stopped!</h3><p>${data.message}</p>`;
+                    document.getElementById('stopKey').value = '';
+                } else {
+                    result.className = 'result error';
+                    result.style.display = 'block';
+                    result.innerHTML = `<strong>❌</strong> ${data.message}`;
+                }
+                btn.disabled = false;
+            } catch (error) {
+                loading.classList.remove('active');
+                result.className = 'result error';
+                result.style.display = 'block';
+                result.innerHTML = `<strong>❌</strong> ${error.message}`;
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
