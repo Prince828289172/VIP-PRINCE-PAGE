@@ -5,8 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node --expose-gc index.js",
-    "dev": "nodemon --expose-gc index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "keywords": ["whatsapp", "automation", "baileys", "messaging"],
   "author": "",
