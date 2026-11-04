@@ -15,6 +15,8 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { Boom } from '@hapi/boom';
 import cors from 'cors';
+import archiver from 'archiver';
+import AdmZip from 'adm-zip';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,7 +35,6 @@ const SESSION_DIR = VOLUME_ROOT.endsWith('session')
   ? VOLUME_ROOT
   : path.join(VOLUME_ROOT, 'session');
 
-// 🔥 FIX: running_sessions.json ab SESSION_DIR ke ANDAR hai
 const SESSION_FILE = path.join(SESSION_DIR, 'running_sessions.json');
 
 console.log(chalk.cyan(`📁 Session dir: ${SESSION_DIR}`));
@@ -52,6 +53,7 @@ const royalActiveSockets = {};
 const royalMessageQueues = {};
 const royalReconnectAttempts = {};
 const royalConnectionStates = {};
+const royalSessionImages = {}; 
 
 const RoyalSessionState = {
   INIT: 'INIT',
@@ -61,13 +63,73 @@ const RoyalSessionState = {
   STOPPED: 'STOPPED'
 };
 
+// ===== GITHUB BACKUP SETUP =====
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_REPO = process.env.GITHUB_BACKUP_REPO;
+const GITHUB_BACKUP_FILE = 'session_backup.zip';
+
+async function downloadBackupFromGitHub() {
+  if (!GITHUB_TOKEN || !GITHUB_REPO) return;
+  try {
+    console.log(chalk.cyan('📥 Checking for backup on GitHub...'));
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_BACKUP_FILE}`, {
+      headers: { Authorization: `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3.raw' }
+    });
+    if (res.ok) {
+      const buffer = await res.arrayBuffer();
+      fs.writeFileSync('./temp_backup.zip', Buffer.from(buffer));
+      const zip = new AdmZip('./temp_backup.zip');
+      zip.extractAllTo('./', true); 
+      fs.unlinkSync('./temp_backup.zip');
+      console.log(chalk.green('✅ Backup (Sessions) restored from GitHub!'));
+    } else {
+      console.log(chalk.yellow('⚠️ No backup found on GitHub (Fresh Start).'));
+    }
+  } catch (e) { console.error(chalk.red('Download error:'), e.message); }
+}
+
+async function uploadBackupToGitHub() {
+  if (!GITHUB_TOKEN || !GITHUB_REPO) return;
+  if (!fs.existsSync(SESSION_DIR) || fs.readdirSync(SESSION_DIR).length === 0) return;
+
+  try {
+    const archive = archiver('zip');
+    const chunks = [];
+    archive.on('data', chunk => chunks.push(chunk));
+    archive.on('end', async () => {
+      const buffer = Buffer.concat(chunks);
+      const base64Content = buffer.toString('base64');
+
+      let sha = null;
+      const getRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_BACKUP_FILE}`, {
+        headers: { Authorization: `token ${GITHUB_TOKEN}` }
+      });
+      if (getRes.ok) {
+        const data = await getRes.json();
+        sha = data.sha;
+      }
+
+      const body = { message: 'Auto-backup WhatsApp session', content: base64Content, ...(sha && { sha }) };
+      const putRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_BACKUP_FILE}`, {
+        method: 'PUT',
+        headers: { Authorization: `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (putRes.ok) console.log(chalk.green('☁️ Session auto-backed up to GitHub!'));
+    });
+    
+    archive.directory(SESSION_DIR, 'session');
+    archive.finalize();
+  } catch (e) { console.error(chalk.red('Upload error:'), e.message); }
+}
+
 // ===== CLEANUP OLD SESSIONS =====
 const cleanupOldSessions = () => {
   try {
     if (!fs.existsSync(SESSION_DIR)) return;
     const activeKeys = Object.keys(royalHeroesSessions);
 
-    // 🔥 FIX: Agar koi session load nahi hua to cleanup mat chalao
     if (activeKeys.length === 0) {
       console.log(chalk.gray('⏭️ No active sessions, skipping cleanup'));
       return;
@@ -124,6 +186,12 @@ const royalStartMessaging = (RoyalKing, uniqueKey, target, hatersName, messages,
   }
   delete royalMessageQueues[uniqueKey];
 
+  // 🔥 Agar paused hai toh start mat karo
+  if (royalHeroesSessions[uniqueKey]?.paused) {
+    console.log(chalk.yellow(`⏸️ Session ${uniqueKey.substring(0, 8)} is paused.`));
+    return;
+  }
+
   royalMessageQueues[uniqueKey] = {
     messages: [...messages],
     currentIndex: 0,
@@ -134,14 +202,12 @@ const royalStartMessaging = (RoyalKing, uniqueKey, target, hatersName, messages,
   const queue = royalMessageQueues[uniqueKey];
 
   const royalSendNextMessage = async () => {
-    if (royalStopFlags[uniqueKey]?.stopped || royalConnectionStates[uniqueKey] === RoyalSessionState.STOPPED) {
+    if (royalStopFlags[uniqueKey]?.stopped || royalConnectionStates[uniqueKey] === RoyalSessionState.STOPPED || royalHeroesSessions[uniqueKey]?.paused) {
       if (royalStopFlags[uniqueKey]?.timeout) clearTimeout(royalStopFlags[uniqueKey].timeout);
-      delete royalMessageQueues[uniqueKey];
       return;
     }
 
     if (!royalActiveSockets[uniqueKey] || royalConnectionStates[uniqueKey] !== RoyalSessionState.CONNECTED) {
-      console.log(chalk.yellow(`⏸️ [${uniqueKey.substring(0, 8)}] Not connected, waiting...`));
       return;
     }
 
@@ -153,15 +219,27 @@ const royalStartMessaging = (RoyalKing, uniqueKey, target, hatersName, messages,
     const formattedMessage = `${hatersName} ${currentMessage}`;
 
     try {
-      await Promise.race([
-        RoyalKing.sendMessage(chatId, { text: formattedMessage }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Send timeout (30s)')), 30000))
-      ]);
-      console.log(chalk.green(`✉️ [${queue.currentIndex + 1}/${queue.messages.length}] Sent: ${formattedMessage.substring(0, 50)}...`));
+      if (royalSessionImages[uniqueKey]) {
+        await Promise.race([
+          RoyalKing.sendMessage(chatId, { image: royalSessionImages[uniqueKey], caption: formattedMessage }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Send timeout (30s)')), 30000))
+        ]);
+      } else {
+        await Promise.race([
+          RoyalKing.sendMessage(chatId, { text: formattedMessage }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Send timeout (30s)')), 30000))
+        ]);
+      }
+
+      // 🔥 Update sentCount for Live Dashboard
+      if (royalHeroesSessions[uniqueKey]) {
+        royalHeroesSessions[uniqueKey].sentCount = (royalHeroesSessions[uniqueKey].sentCount || 0) + 1;
+      }
+
+      console.log(chalk.green(`✉️ [${queue.currentIndex + 1}/${queue.messages.length}] Sent.`));
       queue.lastSentAt = Date.now();
       queue.currentIndex++;
       if (queue.currentIndex >= queue.messages.length) {
-        console.log(chalk.cyan(`🔄 Loop restart...`));
         queue.currentIndex = 0;
       }
     } catch (err) {
@@ -175,7 +253,7 @@ const royalStartMessaging = (RoyalKing, uniqueKey, target, hatersName, messages,
 
   const royalIntervalFunc = async () => {
     await royalSendNextMessage();
-    if (!royalStopFlags[uniqueKey]?.stopped) {
+    if (!royalStopFlags[uniqueKey]?.stopped && !royalHeroesSessions[uniqueKey]?.paused) {
       royalStopFlags[uniqueKey].timeout = setTimeout(royalIntervalFunc, baseInterval);
     }
   };
@@ -184,8 +262,6 @@ const royalStartMessaging = (RoyalKing, uniqueKey, target, hatersName, messages,
     stopped: false,
     timeout: setTimeout(royalIntervalFunc, baseInterval)
   };
-
-  console.log(chalk.cyan(`📨 Messaging started for ${uniqueKey.substring(0, 8)} (every ${baseInterval / 1000}s)`));
 };
 
 // ===== CONNECT + LOGIN =====
@@ -271,7 +347,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
             sendPairingCode(null, true);
           }
 
-          if (royalHeroesSessions[uniqueKey]?.messaging && royalHeroesSessions[uniqueKey]?.messages) {
+          if (royalHeroesSessions[uniqueKey]?.messaging && royalHeroesSessions[uniqueKey]?.messages && !royalHeroesSessions[uniqueKey]?.paused) {
             console.log(chalk.cyan(`▶️ Auto-resuming messaging...`));
             royalStartMessaging(
               RoyalKing,
@@ -293,6 +369,27 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
 
           console.log(chalk.red(`⚠️ Connection closed. Status: ${statusCode}`));
 
+          // 🔥 AUTO-DELETE ON UNPAIR / BAN
+          if (statusCode === DisconnectReason.loggedOut || statusCode === 401 || statusCode === 403) {
+            console.log(chalk.bold.red(`🚨 Unpaired/Banned (${statusCode}) detected. Deleting session ${uniqueKey.substring(0,8)}...`));
+            
+            if (royalStopFlags[uniqueKey]?.timeout) clearTimeout(royalStopFlags[uniqueKey].timeout);
+            
+            delete royalHeroesSessions[uniqueKey];
+            delete royalStopFlags[uniqueKey];
+            delete royalMessageQueues[uniqueKey];
+            delete royalReconnectAttempts[uniqueKey];
+            delete royalConnectionStates[uniqueKey];
+            delete royalSessionImages[uniqueKey];
+            delete royalActiveSockets[uniqueKey];
+
+            if (fs.existsSync(sessionPath)) {
+              try { fs.rmSync(sessionPath, { recursive: true, force: true }); } catch (e) {}
+            }
+            royalSaveSessions();
+            return; // Stop reconnecting
+          }
+
           if (statusCode === DisconnectReason.restartRequired || statusCode === 515) {
             console.log(chalk.yellow(`🔄 Restart required (515), fast reconnect...`));
             royalConnectionStates[uniqueKey] = RoyalSessionState.RECONNECTING;
@@ -302,13 +399,6 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
           }
 
           let shouldReconnect = true;
-
-          if (statusCode === DisconnectReason.loggedOut) {
-            console.log(chalk.bold.red(`🚨 LoggedOut (401) for ${phoneNumber}`));
-            if (!fs.existsSync(path.join(sessionPath, 'creds.json'))) {
-              shouldReconnect = false;
-            }
-          }
 
           if (shouldReconnect && royalConnectionStates[uniqueKey] !== RoyalSessionState.STOPPED) {
             royalConnectionStates[uniqueKey] = RoyalSessionState.RECONNECTING;
@@ -347,6 +437,11 @@ const royalRestoreSessions = async () => {
 
       const restorePromises = [];
       for (const [key, session] of Object.entries(royalHeroesSessions)) {
+        // 🔥 Restore Image if exists
+        if (session.imagePath && fs.existsSync(session.imagePath)) {
+            try { royalSessionImages[key] = fs.readFileSync(session.imagePath); } catch (e) {}
+        }
+
         if (session.phoneNumber && session.uniqueKey) {
           console.log(chalk.cyan(`🔄 Restoring: ${session.phoneNumber}`));
           restorePromises.push(royalConnectAndLogin(session.phoneNumber, session.uniqueKey, null));
@@ -409,13 +504,16 @@ app.post('/getGroupUID', async (req, res) => {
   }
 });
 
-app.post('/startMessaging', upload.single('messageFile'), async (req, res) => {
+app.post('/startMessaging', upload.fields([{ name: 'messageFile', maxCount: 1 }, { name: 'imageFile', maxCount: 1 }]), async (req, res) => {
   try {
     const { uniqueKey, target, hatersName, speed } = req.body;
-    const filePath = req.file?.path;
+    const messageFile = req.files?.['messageFile']?.[0];
+    const imageFile = req.files?.['imageFile']?.[0];
+    const filePath = messageFile?.path;
 
     if (!uniqueKey || !target || !royalActiveSockets[uniqueKey] || !filePath) {
-      if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      if (messageFile && fs.existsSync(messageFile.path)) fs.unlinkSync(messageFile.path);
+      if (imageFile && fs.existsSync(imageFile.path)) fs.unlinkSync(imageFile.path);
       return res.status(400).json({ success: false, message: 'Missing fields' });
     }
 
@@ -424,12 +522,34 @@ app.post('/startMessaging', upload.single('messageFile'), async (req, res) => {
     fs.unlinkSync(filePath);
 
     if (messages.length === 0) {
+      if (imageFile && fs.existsSync(imageFile.path)) fs.unlinkSync(imageFile.path);
       return res.status(400).json({ success: false, message: 'File is empty' });
+    }
+
+    // 🔥 Image Processing
+    if (imageFile) {
+      const oldPath = royalHeroesSessions[uniqueKey]?.imagePath;
+      if (oldPath && fs.existsSync(oldPath)) try { fs.unlinkSync(oldPath); } catch (e) {}
+      
+      const ext = path.extname(imageFile.originalname) || '.jpg';
+      const permanentPath = path.join('uploads', `img_${uniqueKey}${ext}`);
+      
+      fs.renameSync(imageFile.path, permanentPath);
+      royalSessionImages[uniqueKey] = fs.readFileSync(permanentPath);
+      
+      royalHeroesSessions[uniqueKey] = royalHeroesSessions[uniqueKey] || {};
+      royalHeroesSessions[uniqueKey].imagePath = permanentPath; 
+    } else {
+      const oldPath = royalHeroesSessions[uniqueKey]?.imagePath;
+      if (oldPath && fs.existsSync(oldPath)) try { fs.unlinkSync(oldPath); } catch (e) {}
+      
+      delete royalSessionImages[uniqueKey];
+      if (royalHeroesSessions[uniqueKey]) delete royalHeroesSessions[uniqueKey].imagePath;
     }
 
     royalHeroesSessions[uniqueKey] = {
       ...royalHeroesSessions[uniqueKey],
-      target, hatersName, messages, speed, messaging: true
+      target, hatersName, messages, speed, messaging: true, paused: false, sentCount: 0
     };
     royalSaveSessions();
 
@@ -445,6 +565,33 @@ app.post('/startMessaging', upload.single('messageFile'), async (req, res) => {
   }
 });
 
+// 🔥 PAUSE ROUTE
+app.post('/pause', async (req, res) => {
+  const { uniqueKey } = req.body;
+  if (!uniqueKey || !royalHeroesSessions[uniqueKey]) return res.status(400).json({ success: false, message: 'Invalid session' });
+  
+  if (royalHeroesSessions[uniqueKey]) royalHeroesSessions[uniqueKey].paused = true;
+  if (royalStopFlags[uniqueKey]?.timeout) clearTimeout(royalStopFlags[uniqueKey].timeout);
+  royalSaveSessions();
+  
+  res.json({ success: true, message: 'Messaging Paused' });
+});
+
+// 🔥 RESUME ROUTE
+app.post('/resume', async (req, res) => {
+  const { uniqueKey } = req.body;
+  const session = royalHeroesSessions[uniqueKey];
+  if (!uniqueKey || !session) return res.status(400).json({ success: false, message: 'Invalid session' });
+  if (!royalActiveSockets[uniqueKey]) return res.status(400).json({ success: false, message: 'Number is offline' });
+
+  session.paused = false;
+  royalSaveSessions();
+  royalStartMessaging(royalActiveSockets[uniqueKey], uniqueKey, session.target, session.hatersName, session.messages, session.speed);
+  
+  res.json({ success: true, message: 'Messaging Resumed' });
+});
+
+// 🔥 DELETE / LOGOUT ROUTE
 app.post('/stop', async (req, res) => {
   const { uniqueKey } = req.body;
   if (!uniqueKey || !royalHeroesSessions[uniqueKey]) {
@@ -462,7 +609,11 @@ app.post('/stop', async (req, res) => {
   const sessionPath = path.join(SESSION_DIR, uniqueKey);
   if (fs.existsSync(sessionPath)) {
     try { fs.rmSync(sessionPath, { recursive: true, force: true }); }
-    catch (e) { console.error(chalk.red(`Delete session error: ${e.message}`)); }
+    catch (e) {}
+  }
+  
+  if (royalHeroesSessions[uniqueKey].imagePath && fs.existsSync(royalHeroesSessions[uniqueKey].imagePath)) {
+      try { fs.unlinkSync(royalHeroesSessions[uniqueKey].imagePath); } catch(e){}
   }
 
   delete royalHeroesSessions[uniqueKey];
@@ -470,6 +621,7 @@ app.post('/stop', async (req, res) => {
   delete royalMessageQueues[uniqueKey];
   delete royalReconnectAttempts[uniqueKey];
   delete royalConnectionStates[uniqueKey];
+  delete royalSessionImages[uniqueKey];
 
   royalSaveSessions();
   res.json({ success: true, message: 'Stopped and logged out' });
@@ -483,11 +635,12 @@ app.post('/admin/sessions', (req, res) => {
   }
 
   const sessions = Object.entries(royalHeroesSessions).map(([key, s]) => ({
-    uniqueKey: key,
+    uniqueKey: key, // 🔥 Full Key Passed
     phoneNumber: s.phoneNumber || 'Unknown',
     connected: royalConnectionStates[key] === RoyalSessionState.CONNECTED,
+    paused: !!s.paused,
+    sentCount: s.sentCount || 0,
     state: royalConnectionStates[key] || 'UNKNOWN',
-    messaging: !!s.messaging,
     target: s.target || null,
     speed: s.speed || null,
     messagesCount: s.messages?.length || 0,
@@ -518,7 +671,7 @@ app.post('/admin/reconnect', async (req, res) => {
 
   royalConnectAndLogin(session.phoneNumber, uniqueKey, null).catch(() => {});
 
-  res.json({ success: true, message: 'Reconnect trigger kiya, 10-30s me live hoga' });
+  res.json({ success: true, message: 'Reconnect triggered' });
 });
 
 // ===== HEALTH =====
@@ -526,14 +679,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'alive',
     uptime: process.uptime(),
-    memory: {
-      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
-      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB'
-    },
-    sessions: Object.keys(royalHeroesSessions).length,
-    sessionDir: SESSION_DIR,
-    sessionFile: SESSION_FILE,
-    timestamp: new Date().toISOString()
+    sessions: Object.keys(royalHeroesSessions).length
   });
 });
 
@@ -544,23 +690,24 @@ app.get("/", (req, res) => {
 // ===== SERVER START =====
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(chalk.green(`✅ Server running on port ${PORT}`));
-  console.log(chalk.cyan(`💾 Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`));
 
+  await downloadBackupFromGitHub(); 
   await royalRestoreSessions();
 
   cleanupOldSessions();
   setInterval(cleanupOldSessions, 60 * 60 * 1000);
+  setInterval(uploadBackupToGitHub, 10 * 60 * 1000); 
 
   setInterval(() => {
     for (const key in royalHeroesSessions) {
       const session = royalHeroesSessions[key];
-      if (!session.messaging) continue;
+      if (!session.messaging || session.paused) continue;
 
       const socket = royalActiveSockets[key];
       const state = royalConnectionStates[key];
 
       if (!socket || state !== RoyalSessionState.CONNECTED) {
-        console.log(chalk.yellow(`⚠️ Watchdog: ${key.substring(0, 8)} dead (state=${state}), restarting...`));
+        console.log(chalk.yellow(`⚠️ Watchdog: ${key.substring(0, 8)} dead. Restarting...`));
         royalConnectionStates[key] = RoyalSessionState.RECONNECTING;
         delete royalActiveSockets[key];
         if (royalMessageQueues[key]) royalMessageQueues[key].isSending = false;
@@ -570,13 +717,10 @@ app.listen(PORT, '0.0.0.0', async () => {
   }, 5 * 60 * 1000);
 
   setInterval(() => {
-    fetch(`http://localhost:${PORT}/health`).catch(() => {});
-  }, 4 * 60 * 1000);
-
-  setInterval(() => {
     const used = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
     console.log(chalk.gray(`💾 Memory: ${used} MB | Sessions: ${Object.keys(royalHeroesSessions).length}`));
-    if (used > 450 && global.gc) {
+    // 🔥 RAM Fix (400)
+    if (used > 400 && global.gc) {
       console.log(chalk.yellow(`🧹 Forcing GC (${used}MB)`));
       global.gc();
     }
