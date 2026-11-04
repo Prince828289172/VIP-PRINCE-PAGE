@@ -682,13 +682,12 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(chalk.green(`✅ Server running on port ${PORT}`));
   console.log(chalk.cyan(`💾 Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`));
 
-  // 🔥 FIX: Server turant live ho gaya. Ab background me backup download hoga.
   console.log(chalk.cyan('🔄 Background me backup load ho raha hai...'));
   downloadBackupFromGitHub().then(() => {
     return royalRestoreSessions();
   }).catch(err => {
     console.error(chalk.red('Backup load error:'), err.message);
-    return royalRestoreSessions(); // Error aaye tab bhi normal start ho
+    return royalRestoreSessions();
   });
 
   cleanupOldSessions();
