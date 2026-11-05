@@ -4,65 +4,106 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WhatsApp Tool by Prince Don</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Share Tech Mono', monospace;
+            background: #000;
+            color: #00ff41;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
+            position: relative;
+        }
+
+        /* Background Image Overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            background: url('https://i.ibb.co/Dgr33g9z/166448.jpg') center top/cover no-repeat;
+            filter: blur(3px) brightness(.4) hue-rotate(90deg) saturate(1.4);
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: linear-gradient(180deg, rgba(0,0,0,.78), rgba(0,0,0,.95));
+            pointer-events: none;
         }
 
         .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            background: rgba(0, 15, 0, 0.85);
+            border: 1px solid rgba(0, 255, 65, 0.5);
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.2);
             max-width: 950px;
             width: 100%;
             overflow: hidden;
+            position: relative;
+            z-index: 1;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
+            background: #001500;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
         }
 
-        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
-        .header p { font-size: 1.1em; opacity: 0.9; }
+        /* Terminal Mac Dots */
+        .dots { display: flex; gap: 8px; margin-right: 15px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .dot.red { background: #ff5f56; }
+        .dot.yellow { background: #ffbd2e; }
+        .dot.green { background: #27c93f; }
+
+        .header h1 { 
+            font-size: 1.2em; 
+            color: #00ff41; 
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+        .header p { display: none; /* Hide old subtitle */ }
 
         .tabs {
             display: flex;
-            background: #f5f5f5;
-            border-bottom: 2px solid #ddd;
+            background: rgba(0, 20, 5, 0.9);
+            border-bottom: 1px solid rgba(0, 255, 65, 0.3);
         }
 
         .tab {
             flex: 1;
-            padding: 20px;
+            padding: 18px;
             text-align: center;
             cursor: pointer;
-            font-size: 1.1em;
+            font-size: 1em;
             font-weight: 600;
-            color: #666;
+            color: #009922;
             transition: all 0.3s;
             border: none;
             background: transparent;
+            font-family: 'Share Tech Mono', monospace;
+            letter-spacing: 1px;
         }
 
-        .tab:hover { background: #e0e0e0; }
+        .tab:hover { color: #00ff41; background: rgba(0, 255, 65, 0.1); }
         .tab.active {
-            background: white;
-            color: #667eea;
-            border-bottom: 3px solid #667eea;
+            background: rgba(0, 255, 65, 0.15);
+            color: #00ff41;
+            border-bottom: 2px solid #00ff41;
+            text-shadow: 0 0 8px #00ff41;
         }
 
-        .tab-content { display: none; padding: 40px; animation: fadeIn 0.5s; }
+        .tab-content { display: none; padding: 30px; animation: fadeIn 0.5s; }
         .tab-content.active { display: block; }
 
         @keyframes fadeIn {
@@ -70,14 +111,16 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .form-group { margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; }
 
         label {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: #333;
-            font-size: 1em;
+            color: #00ff41;
+            font-size: 0.9em;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
 
         input[type="text"],
@@ -87,85 +130,94 @@
         select {
             width: 100%;
             padding: 12px 15px;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            font-size: 1em;
+            border: 1px solid rgba(0, 255, 65, 0.4);
+            border-radius: 6px;
+            font-size: 0.95em;
+            background: rgba(0, 20, 5, 0.9);
+            color: #00ff41;
+            font-family: 'Share Tech Mono', monospace;
             transition: all 0.3s;
         }
 
         input:focus, select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #00ff41;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
         }
 
         button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(180deg, #00ff41, #00aa2a);
+            color: #000;
             padding: 15px 30px;
             border: none;
-            border-radius: 10px;
-            font-size: 1.1em;
-            font-weight: 600;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
             cursor: pointer;
             width: 100%;
             transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            font-family: 'Share Tech Mono', monospace;
         }
 
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-        }
-
+        button:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 255, 65, 0.5); }
         button:active { transform: translateY(0); }
         button:disabled {
-            background: #ccc;
+            background: #0a1a0a;
+            color: #005518;
+            border: 1px solid #005518;
             cursor: not-allowed;
             box-shadow: none;
         }
 
         .result {
             margin-top: 25px;
-            padding: 20px;
-            border-radius: 10px;
+            padding: 15px;
+            border-radius: 6px;
             display: none;
+            font-size: 0.9em;
         }
 
-        .result.success { background: #d4edda; border: 2px solid #c3e6cb; color: #155724; }
-        .result.error { background: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; }
-        .result.info { background: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460; }
+        .result.success { background: rgba(0, 255, 65, 0.1); border: 1px solid #00ff41; color: #00ff41; }
+        .result.error { background: rgba(255, 0, 60, 0.1); border: 1px solid #ff5f56; color: #ff5f56; }
+        .result.info { background: rgba(0, 170, 255, 0.1); border: 1px solid #00aaff; color: #00aaff; }
 
         .pairing-code {
             font-size: 2em;
             font-weight: bold;
             text-align: center;
-            letter-spacing: 3px;
+            letter-spacing: 5px;
             margin: 20px 0;
             padding: 15px;
-            background: #f8f9ff;
-            border-radius: 10px;
+            background: rgba(0, 20, 5, 0.9);
+            border: 2px dashed #00ff41;
+            border-radius: 6px;
+            color: #00ff41;
+            text-shadow: 0 0 15px #00ff41;
         }
 
         .key-display {
-            background: #f8f9ff;
+            background: rgba(0, 20, 5, 0.9);
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 6px;
             margin: 15px 0;
             word-break: break-all;
-            font-family: monospace;
-            border: 2px solid #667eea;
+            font-family: 'Share Tech Mono', monospace;
+            border: 1px solid rgba(0, 255, 65, 0.4);
+            color: #00ff41;
+            font-size: 0.85em;
         }
 
         .loading { display: none; text-align: center; margin: 20px 0; }
         .loading.active { display: block; }
 
         .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            border: 3px solid rgba(0, 255, 65, 0.2);
+            border-top: 3px solid #00ff41;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             animation: spin 1s linear infinite;
             margin: 0 auto;
         }
@@ -176,21 +228,22 @@
         }
 
         .info-box {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            color: #856404;
+            background: rgba(0, 255, 65, 0.05);
+            border-left: 3px solid #00ff41;
+            color: #009922;
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 0 6px 6px 0;
             margin-bottom: 20px;
+            font-size: 0.85em;
         }
 
-        .info-box strong { display: block; margin-bottom: 5px; }
+        .info-box strong { display: block; margin-bottom: 5px; color: #00ff41; }
 
         /* 🔥 LIVE DASHBOARD STYLES */
         .session-card {
-            background: #f8f9ff;
-            border: 2px solid #e0e5ff;
-            border-radius: 12px;
+            background: rgba(0, 15, 0, 0.75);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 8px;
             padding: 18px;
             margin-bottom: 12px;
             transition: all 0.3s;
@@ -200,63 +253,77 @@
             position: relative;
         }
 
-        .session-card.online { border-left: 5px solid #28a745; }
-        .session-card.paused { border-left: 5px solid #ffc107; }
-        .session-card.offline { border-left: 5px solid #dc3545; }
+        .session-card.online { border-left: 3px solid #00ff41; }
+        .session-card.paused { border-left: 3px solid #ffcc00; }
+        .session-card.offline { border-left: 3px solid #ff5f56; }
 
-        .session-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
-        .session-number { font-size: 1.3em; font-weight: bold; color: #333; font-family: monospace; }
-        .session-meta { font-size: 0.85em; color: #555; background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #ddd; word-break: break-all; font-family: monospace; }
+        .session-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 1px solid rgba(0, 255, 65, 0.2); padding-bottom: 10px; }
+        .session-number { font-size: 1.2em; font-weight: bold; color: #fff; font-family: 'Share Tech Mono', monospace; }
+        .session-meta { font-size: 0.8em; color: #009922; background: rgba(0,0,0,0.5); padding: 8px; border-radius: 4px; border: 1px solid rgba(0, 255, 65, 0.2); word-break: break-all; font-family: 'Share Tech Mono', monospace; }
         
         .live-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
-        .stat-box { background: #fff; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #eee; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .stat-box .label { font-size: 0.75em; color: #777; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
-        .stat-box .value { font-size: 1.1em; font-weight: bold; color: #333; }
-        .stat-box .value.green { color: #28a745; }
+        .stat-box { background: rgba(0,0,0,0.6); padding: 10px; border-radius: 6px; text-align: center; border: 1px solid rgba(0, 255, 65, 0.15); }
+        .stat-box .label { font-size: 0.7em; color: #009922; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .stat-box .value { font-size: 1.1em; font-weight: bold; color: #00ff41; }
+        .stat-box .value.green { color: #00ff41; }
 
         .session-badges { display: flex; gap: 6px; flex-wrap: wrap; }
-        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75em; font-weight: 600; white-space: nowrap; }
-        .badge.online { background: #d4edda; color: #155724; }
-        .badge.offline { background: #f8d7da; color: #721c24; }
-        .badge.paused { background: #fff3cd; color: #856404; }
-        .badge.messaging { background: #cce5ff; color: #004085; }
-        .badge.state { background: #e2e3e5; color: #383d41; }
+        .badge { padding: 4px 10px; border-radius: 4px; font-size: 0.75em; font-weight: 600; white-space: nowrap; border: 1px solid; }
+        .badge.online { background: rgba(0, 255, 65, 0.1); color: #00ff41; border-color: #00ff41; }
+        .badge.offline { background: rgba(255, 95, 86, 0.1); color: #ff5f56; border-color: #ff5f56; }
+        .badge.paused { background: rgba(255, 204, 0, 0.1); color: #ffcc00; border-color: #ffcc00; }
+        .badge.messaging { background: rgba(0, 170, 255, 0.1); color: #00aaff; border-color: #00aaff; }
+        .badge.state { background: rgba(255, 255, 255, 0.1); color: #fff; border-color: #555; }
 
         .admin-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-        .btn-small { padding: 10px 15px; font-size: 0.9em; width: auto; flex: 1; min-width: 100px; border-radius: 8px; }
-        .btn-pause { background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: #333; }
-        .btn-resume { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
-        .btn-delete { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
-        .btn-reconnect { background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); }
+        .btn-small { padding: 10px 15px; font-size: 0.85em; width: auto; flex: 1; min-width: 100px; border-radius: 4px; letter-spacing: 1px; }
+        
+        .btn-pause { background: transparent; color: #ffcc00; border: 1px solid #ffcc00; }
+        .btn-pause:hover { background: #ffcc00; color: #000; box-shadow: 0 0 15px rgba(255, 204, 0, 0.4); }
+        
+        .btn-resume { background: transparent; color: #00ff41; border: 1px solid #00ff41; }
+        .btn-resume:hover { background: #00ff41; color: #000; box-shadow: 0 0 15px rgba(0, 255, 65, 0.4); }
+        
+        .btn-delete { background: transparent; color: #ff5f56; border: 1px solid #ff5f56; }
+        .btn-delete:hover { background: #ff5f56; color: #000; box-shadow: 0 0 15px rgba(255, 95, 86, 0.4); }
+        
+        .btn-reconnect { background: transparent; color: #00aaff; border: 1px solid #00aaff; }
+        .btn-reconnect:hover { background: #00aaff; color: #000; box-shadow: 0 0 15px rgba(0, 170, 255, 0.4); }
 
-        .btn-refresh { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); margin-bottom: 20px; }
+        .btn-refresh { background: linear-gradient(180deg, #00ff41, #00aa2a); margin-bottom: 20px; }
 
         .selected-session-bar {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            color: #00ff41;
             padding: 15px 20px;
-            border-radius: 10px;
+            border-radius: 6px;
             margin-bottom: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 10px;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.15);
         }
 
-        .selected-session-bar strong { font-family: monospace; }
-        .back-btn { background: rgba(255,255,255,0.3); padding: 8px 16px; width: auto; font-size: 0.9em; box-shadow: none; }
-        .back-btn:hover { background: rgba(255,255,255,0.5); transform: none; }
+        .selected-session-bar strong { font-family: 'Share Tech Mono', monospace; font-size: 1.2em; }
+        .back-btn { background: transparent; padding: 8px 16px; width: auto; font-size: 0.85em; box-shadow: none; border: 1px solid #ff5f56; color: #ff5f56; }
+        .back-btn:hover { background: #ff5f56; color: #000; box-shadow: none; transform: none; }
 
-        .empty-state { text-align: center; padding: 40px 20px; color: #888; }
-        .empty-state h3 { margin-bottom: 10px; color: #555; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #005518; }
+        .empty-state h3 { margin-bottom: 10px; color: #00ff41; }
 
-        .live-indicator { position: absolute; top: 15px; right: 15px; display: flex; align-items: center; gap: 5px; font-size: 0.75em; color: #28a745; font-weight: bold; }
-        .live-dot { width: 8px; height: 8px; background: #28a745; border-radius: 50%; animation: blink 1s infinite; }
+        .live-indicator { position: absolute; top: 15px; right: 15px; display: flex; align-items: center; gap: 5px; font-size: 0.75em; color: #00ff41; font-weight: bold; font-family: 'Share Tech Mono', monospace; }
+        .live-dot { width: 6px; height: 6px; background: #00ff41; border-radius: 50%; animation: blink 1s infinite; box-shadow: 0 0 8px #00ff41; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
+        hr { border: none; border-top: 1px dashed rgba(0, 255, 65, 0.3); margin: 30px 0; }
+        
+        small { color: #009922 !important; font-size: 0.8em; }
+
         @media (max-width: 768px) {
-            .header h1 { font-size: 1.8em; }
+            .header h1 { font-size: 1em; }
             .tab { padding: 15px 10px; font-size: 0.85em; }
             .tab-content { padding: 20px; }
             .admin-actions { flex-direction: column; }
@@ -267,19 +334,24 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>WhatsApp Messaging Tool</h1>
+            <div class="dots">
+                <div class="dot red"></div>
+                <div class="dot yellow"></div>
+                <div class="dot green"></div>
+            </div>
+            <h1>root@server: ~ whatsapp-tool</h1>
             <p>Automate your WhatsApp messages with ease</p>
         </div>
 
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('start', this)">▶️ Start</button>
-            <button class="tab" onclick="switchTab('admin', this)">🔐 Admin</button>
-            <button class="tab" onclick="switchTab('stop', this)">⏹️ Stop</button>
+            <button class="tab active" onclick="switchTab('start', this)">▶️ START</button>
+            <button class="tab" onclick="switchTab('admin', this)">🔐 ADMIN</button>
+            <button class="tab" onclick="switchTab('stop', this)">⏹️ STOP</button>
         </div>
 
         <div id="start-tab" class="tab-content active">
             <div class="info-box">
-                <strong>📱 How to use:</strong>
+                <strong>[+] SYSTEM INFO:</strong>
                 1. Phone number daalo (country code ke saath)<br>
                 2. Pairing code lo aur link karo<br>
                 3. Target select karo, file upload karo<br>
@@ -291,33 +363,33 @@
                     <label for="phoneNumber">Phone Number (with country code):</label>
                     <input type="text" id="phoneNumber" placeholder="e.g., 919876543210" required>
                 </div>
-                <button type="submit" id="loginBtn">🔗 Connect WhatsApp</button>
+                <button type="submit" id="loginBtn">🔗 CONNECT WHATSAPP</button>
             </form>
 
             <div class="loading" id="loginLoading">
                 <div class="spinner"></div>
-                <p>Connecting to WhatsApp...</p>
+                <p style="margin-top:15px; color:#00ff41;">Connecting to WhatsApp...</p>
             </div>
 
             <div id="loginResult" class="result"></div>
 
             <div id="messagingSection" style="display: none;">
-                <hr style="margin: 30px 0; border: none; border-top: 2px solid #eee;">
+                <hr>
 
                 <div class="selected-session-bar">
                     <div>
-                        <div style="font-size: 0.85em; opacity: 0.9;">Selected Session</div>
+                        <div style="font-size: 0.85em; opacity: 0.7;">SELECTED SESSION</div>
                         <strong id="selectedNumberDisplay">-</strong>
                     </div>
-                    <button class="back-btn" onclick="deselectSession()">✕ Change</button>
+                    <button class="back-btn" onclick="deselectSession()">✕ CHANGE</button>
                 </div>
 
                 <form id="messagingForm">
                     <div class="form-group">
                         <label for="target">Target (Group ID or Phone Number):</label>
                         <input type="text" id="target" placeholder="e.g., 120363XXXXXX@g.us or 919876543210" required>
-                        <button type="button" onclick="fetchGroups()" style="margin-top: 10px; background: #28a745;">
-                            📋 Fetch My Groups
+                        <button type="button" onclick="fetchGroups()" style="margin-top: 10px; border: 1px solid #00ff41; background: transparent; color: #00ff41;">
+                            📋 FETCH MY GROUPS
                         </button>
                     </div>
 
@@ -337,7 +409,7 @@
                     <div class="form-group">
                         <label for="imageFile">Upload Image (Optional - Sent with every message):</label>
                         <input type="file" id="imageFile" accept="image/*">
-                        <small style="color: #666; display: block; margin-top: 5px;">
+                        <small style="display: block; margin-top: 5px;">
                             Leave empty for text-only messages
                         </small>
                     </div>
@@ -345,7 +417,7 @@
                     <div class="form-group">
                         <label for="messageFile">Upload Message File (.txt):</label>
                         <input type="file" id="messageFile" accept=".txt" required>
-                        <small style="color: #666; display: block; margin-top: 5px;">
+                        <small style="display: block; margin-top: 5px;">
                             Each line = separate message
                         </small>
                     </div>
@@ -355,12 +427,12 @@
                         <input type="number" id="speed" min="1" value="5" required>
                     </div>
 
-                    <button type="submit" id="startBtn">🚀 Start Messaging</button>
+                    <button type="submit" id="startBtn">🚀 START MESSAGING</button>
                 </form>
 
                 <div class="loading" id="messagingLoading">
                     <div class="spinner"></div>
-                    <p>Starting automation...</p>
+                    <p style="margin-top:15px; color:#00ff41;">Starting automation...</p>
                 </div>
 
                 <div id="messagingResult" class="result"></div>
@@ -370,7 +442,7 @@
         <div id="admin-tab" class="tab-content">
             <div id="adminLoginSection">
                 <div class="info-box">
-                    <strong>🔐 Admin Access:</strong>
+                    <strong>[!] ADMIN ACCESS:</strong>
                     Password daalein sessions dekhne ke liye.
                 </div>
                 <form id="adminLoginForm">
@@ -378,22 +450,22 @@
                         <label for="adminPassword">Admin Password:</label>
                         <input type="password" id="adminPassword" placeholder="Enter admin password" required>
                     </div>
-                    <button type="submit" id="adminLoginBtn">🔓 Login</button>
+                    <button type="submit" id="adminLoginBtn">🔓 LOGIN</button>
                 </form>
                 <div class="loading" id="adminLoginLoading">
                     <div class="spinner"></div>
-                    <p>Verifying...</p>
+                    <p style="margin-top:15px; color:#00ff41;">Verifying...</p>
                 </div>
                 <div id="adminLoginResult" class="result"></div>
             </div>
 
             <div id="adminPanelSection" style="display: none;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h3 style="color: #333;">📱 Live Dashboard</h3>
+                    <h3 style="color: #00ff41; text-transform:uppercase; letter-spacing:2px;">📱 Live Dashboard</h3>
                     <div class="live-indicator"><div class="live-dot"></div> LIVE</div>
                 </div>
                 
-                <button class="back-btn" style="background: #dc3545; margin-bottom: 20px;" onclick="adminLogout()">🚪 Logout</button>
+                <button class="back-btn" style="margin-bottom: 20px;" onclick="adminLogout()">🚪 LOGOUT</button>
 
                 <div id="sessionsList"></div>
             </div>
@@ -401,7 +473,7 @@
 
         <div id="stop-tab" class="tab-content">
             <div class="info-box">
-                <strong>⚠️ Stop Process:</strong>
+                <strong>[!] STOP PROCESS:</strong>
                 Unique key daalo ya admin panel se select karo.
             </div>
 
@@ -410,14 +482,14 @@
                     <label for="stopKey">Unique Key:</label>
                     <input type="text" id="stopKey" placeholder="Enter unique key" required>
                 </div>
-                <button type="submit" id="stopBtn" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
-                    ⏹️ Stop Process
+                <button type="submit" id="stopBtn" style="border: 1px solid #ff5f56; background: transparent; color: #ff5f56;">
+                    ⏹️ STOP PROCESS
                 </button>
             </form>
 
             <div class="loading" id="stopLoading">
                 <div class="spinner"></div>
-                <p>Stopping...</p>
+                <p style="margin-top:15px; color:#00ff41;">Stopping...</p>
             </div>
 
             <div id="stopResult" class="result"></div>
@@ -749,7 +821,7 @@
                 
                 // 🔥 NAYA BUTTON: Select karne ke liye (Sirf online sessions ke liye)
                 if (s.connected) {
-                    actionButtons += `<button class="btn-small" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" onclick="selectSession('${s.uniqueKey}', '${s.phoneNumber}')">🚀 Use</button>`;
+                    actionButtons += `<button class="btn-small" style="background: transparent; border: 1px solid #00ff41; color: #00ff41;" onclick="selectSession('${s.uniqueKey}', '${s.phoneNumber}')">🚀 Use</button>`;
                 }
 
                 if (s.connected) {
@@ -765,8 +837,8 @@
 
                 return `
                     <div class="session-card ${cardClass}">
-                        <div class="live-indicator" style="color: ${s.connected ? (s.paused ? '#ffc107' : '#28a745') : '#dc3545'};">
-                            <div class="live-dot" style="background: ${s.connected ? (s.paused ? '#ffc107' : '#28a745') : '#dc3545'};"></div> 
+                        <div class="live-indicator" style="color: ${s.connected ? (s.paused ? '#ffcc00' : '#00ff41') : '#ff5f56'};">
+                            <div class="live-dot" style="background: ${s.connected ? (s.paused ? '#ffcc00' : '#00ff41') : '#ff5f56'};"></div> 
                             LIVE
                         </div>
                         <div class="session-header">
