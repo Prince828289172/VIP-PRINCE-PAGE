@@ -45,7 +45,7 @@ if (!fs.existsSync('uploads')) fs.mkdirSync('uploads', { recursive: true });
 
 // ===== ADMIN PASSWORD & ACCESS PASSWORD =====
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Prince890';
-const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || 'PRINCE123'; // Ye website ka main lock hai
+const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || 'PRINCE123';
 
 // ===== GLOBAL STATE =====
 const royalHeroesSessions = {};
@@ -120,7 +120,6 @@ async function uploadBackupToGitHub() {
       if (putRes.ok) console.log(chalk.green('☁️ Session + Images auto-backed up to GitHub!'));
     });
     
-    // 🔥 Yahan humne uploads folder ko bhi zip me add kar diya hai
     archive.directory(SESSION_DIR, 'session');
     archive.directory('uploads', 'uploads'); 
     archive.finalize();
@@ -457,7 +456,7 @@ const royalRestoreSessions = async () => {
 
 // ===== ROUTES =====
 
-// 🔥 NAYA ROUTE: Website Access Password Check 🔥
+// 🔥 WEBSITE ACCESS PASSWORD CHECK 🔥
 app.post('/api/verify-access', (req, res) => {
     const { password } = req.body;
     if (password === ACCESS_PASSWORD) {
@@ -558,7 +557,8 @@ app.post('/startMessaging', upload.fields([{ name: 'messageFile', maxCount: 1 },
 
     royalHeroesSessions[uniqueKey] = {
       ...royalHeroesSessions[uniqueKey],
-      target, hatersName, messages, speed, messaging: true, paused: false, sentCount: 0
+      target, hatersName, messages, speed, messaging: true, paused: false, sentCount: 0,
+      startTime: Date.now() // 🔥 YE NAYA ADD HUA HAI (Running Since ke liye)
     };
     royalSaveSessions();
 
@@ -592,6 +592,8 @@ app.post('/resume', async (req, res) => {
   if (!royalActiveSockets[uniqueKey]) return res.status(400).json({ success: false, message: 'Number is offline' });
 
   session.paused = false;
+  // Jab resume ho, toh startTime wapas set kardo taaki timer sahi chale
+  session.startTime = Date.now(); 
   royalSaveSessions();
   royalStartMessaging(royalActiveSockets[uniqueKey], uniqueKey, session.target, session.hatersName, session.messages, session.speed);
   
@@ -633,6 +635,7 @@ app.post('/stop', async (req, res) => {
   res.json({ success: true, message: 'Stopped and logged out' });
 });
 
+// 🔥 UPDATED ADMIN ROUTE (Added hatersName and startTime) 🔥
 app.post('/admin/sessions', (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) {
@@ -647,7 +650,9 @@ app.post('/admin/sessions', (req, res) => {
     sentCount: s.sentCount || 0,
     state: royalConnectionStates[key] || 'UNKNOWN',
     target: s.target || null,
+    hatersName: s.hatersName || null, // 🔥 YE ADD HUA
     speed: s.speed || null,
+    startTime: s.startTime || null, // 🔥 YE NAYA ADD HUA (Running since)
     messagesCount: s.messages?.length || 0,
     lastUpdate: s.lastUpdateTimestamp || null,
     hasSocket: !!royalActiveSockets[key]
@@ -726,7 +731,6 @@ app.listen(PORT, '0.0.0.0', () => {
     }
   }, 5 * 60 * 1000);
 
-  // 🔥 YE HAI NAYA MEMORY CLEANUP BLOCK 🔥
   setInterval(() => {
     const used = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
     console.log(chalk.gray(`💾 Memory: ${used} MB | Sessions: ${Object.keys(royalHeroesSessions).length}`));
