@@ -270,7 +270,6 @@
 
         .info-box strong { display: block; margin-bottom: 5px; color: #fff; }
 
-        /* LIVE DASHBOARD STYLES */
         .session-card {
             background: rgba(10,10,15,.6);
             border: 1px solid rgba(255,0,60,.25);
@@ -321,8 +320,6 @@
         .btn-reconnect { background: transparent; border: 1px solid #6bc6ff; color: #6bc6ff; box-shadow: none; }
         .btn-reconnect:hover { background: rgba(107,198,255,.1); box-shadow: 0 0 15px rgba(107,198,255,.2); }
 
-        .btn-refresh { background: linear-gradient(180deg, #ff0a45, #c40030); margin-bottom: 20px; }
-
         .selected-session-bar {
             background: rgba(255,0,60,.1);
             border: 1px solid #ff003c;
@@ -352,7 +349,6 @@
         hr { border: none; border-top: 1px solid rgba(255,255,255,.05); margin: 25px 0; }
         small { color: #6b6b7a !important; }
 
-        /* UPTIME BADGE */
         .uptime-badge {
             display: inline-flex;
             align-items: center;
@@ -369,6 +365,8 @@
         }
         .uptime-badge .dot { width: 6px; height: 6px; background: #38ef7d; border-radius: 50%; animation: blink 1s infinite; }
 
+        @keyframes bl { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
         @media (max-width: 768px) {
             .header h1 { font-size: 1.6em; }
             .tab { padding: 12px 5px; font-size: 0.75em; }
@@ -376,9 +374,6 @@
             .admin-actions { flex-direction: column; }
             .live-stats { grid-template-columns: repeat(2, 1fr); }
         }
-        
-        /* BLINK ANIMATION FOR LOGIN SCREEN */
-        @keyframes bl { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
 </head>
 <body>
@@ -396,7 +391,7 @@
             <h2 style="color: #ff003c; font-size: 0.9em; margin: 0 0 25px 0; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; text-shadow: 0 0 10px #ff003c;">PRINCE CONTROL CENTER</h2>
             
             <div style="background: #000; border: 1px solid rgba(255,0,60,.3); padding: 8px; border-radius: 6px; margin-bottom: 25px; font-family: monospace; color: #38ef7d; font-size: 0.85em; letter-spacing: 1px;">
-                <span style="color: #ff003c;">root@server:~#</span> [ SYSTEM LOCKED ]<span class="blink" style="animation: bl 1s infinite; background: #38ef7d; display: inline-block; width: 8px; height: 12px; margin-left: 5px; vertical-align: middle;"></span>
+                <span style="color: #ff003c;">root@server:~#</span> [ SYSTEM LOCKED ]<span style="animation: bl 1s infinite; background: #38ef7d; display: inline-block; width: 8px; height: 12px; margin-left: 5px; vertical-align: middle;"></span>
             </div>
             
             <div style="position: relative; margin-bottom: 20px;">
@@ -588,7 +583,7 @@
         const MAX_POLL_ATTEMPTS = 40;
         const API_URL = window.location.origin;
 
-        // 🔥 ACCESS PASSWORD VERIFY FUNCTION
+        // 🔥 ACCESS PASSWORD VERIFY FUNCTION (Only Backend Check)
         async function verifyAccess() {
             const pwd = document.getElementById('accessPassword').value;
             const btn = document.getElementById('accessBtn');
@@ -599,7 +594,7 @@
             error.style.display = 'none';
 
             try {
-                // Backend check
+                // Backend check only
                 const response = await fetch('/api/verify-access', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -617,20 +612,14 @@
                     btn.disabled = false;
                 }
             } catch (err) {
-                // Agar backend route nahi hai abhi, toh testing ke liye hardcoded check
-                if(pwd === 'PRINCE123') {
-                     document.getElementById('accessScreen').style.display = 'none'; 
-                     document.getElementById('mainContainer').style.display = 'block';
-                     sessionStorage.setItem('accessGranted', 'true');
-                } else {
-                     error.style.display = 'block';
-                     btn.innerText = 'UNLOCK SYSTEM';
-                     btn.disabled = false;
-                }
+                error.innerText = "Server error!";
+                error.style.display = 'block';
+                btn.innerText = 'UNLOCK SYSTEM';
+                btn.disabled = false;
             }
         }
 
-        // Page load hone par check karo
+        // Page load hone par session check karo
         window.onload = () => {
             if (sessionStorage.getItem('accessGranted') === 'true') {
                 document.getElementById('accessScreen').style.display = 'none';
