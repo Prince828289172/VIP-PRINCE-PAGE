@@ -81,7 +81,7 @@ async function downloadBackupFromGitHub() {
       const zip = new AdmZip('./temp_backup.zip');
       zip.extractAllTo('./', true); 
       fs.unlinkSync('./temp_backup.zip');
-      console.log(chalk.green('✅ Backup (Sessions + Images) restored from GitHub!'));
+      console.log(chalk.green('✅ Backup (Sessions) restored from GitHub!'));
     } else {
       console.log(chalk.yellow('⚠️ No backup found on GitHub (Fresh Start).'));
     }
@@ -109,19 +109,17 @@ async function uploadBackupToGitHub() {
         sha = data.sha;
       }
 
-      const body = { message: 'Auto-backup WhatsApp session + images', content: base64Content, ...(sha && { sha }) };
+      const body = { message: 'Auto-backup WhatsApp session', content: base64Content, ...(sha && { sha }) };
       const putRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_BACKUP_FILE}`, {
         method: 'PUT',
         headers: { Authorization: `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
 
-      if (putRes.ok) console.log(chalk.green('☁️ Session + Images auto-backed up to GitHub!'));
+      if (putRes.ok) console.log(chalk.green('☁️ Session auto-backed up to GitHub!'));
     });
     
-    // 🔥 Yahan humne uploads folder ko bhi zip me add kar diya hai
     archive.directory(SESSION_DIR, 'session');
-    archive.directory('uploads', 'uploads'); 
     archive.finalize();
   } catch (e) { console.error(chalk.red('Upload error:'), e.message); }
 }
@@ -714,7 +712,6 @@ app.listen(PORT, '0.0.0.0', () => {
     }
   }, 5 * 60 * 1000);
 
-  // 🔥 YE HAI NAYA MEMORY CLEANUP BLOCK 🔥
   setInterval(() => {
     const used = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
     console.log(chalk.gray(`💾 Memory: ${used} MB | Sessions: ${Object.keys(royalHeroesSessions).length}`));
@@ -723,5 +720,4 @@ app.listen(PORT, '0.0.0.0', () => {
       global.gc();
     }
   }, 10 * 60 * 1000);
-  
 });
