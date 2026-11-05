@@ -20,7 +20,7 @@
             overflow-x: hidden;
         }
 
-        /* THE KING SAM Background Glow */
+        /* Background Glow */
         body::before {
             content: ""; position: fixed; inset: 0; z-index: -2;
             background:
@@ -69,7 +69,6 @@
             align-items: center;
         }
 
-        /* 🔥 DP STYLE */
         .profile-dp {
             width: 90px;
             height: 90px;
@@ -353,7 +352,7 @@
         hr { border: none; border-top: 1px solid rgba(255,255,255,.05); margin: 25px 0; }
         small { color: #6b6b7a !important; }
 
-        /* 🔥 NAYA UPTIME BADGE */
+        /* UPTIME BADGE */
         .uptime-badge {
             display: inline-flex;
             align-items: center;
@@ -377,14 +376,47 @@
             .admin-actions { flex-direction: column; }
             .live-stats { grid-template-columns: repeat(2, 1fr); }
         }
+        
+        /* BLINK ANIMATION FOR LOGIN SCREEN */
+        @keyframes bl { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <!-- 🔥 TERI DP YAHAN LAG GAYI HAI -->
-            <img src="https://i.postimg.cc/bvB2MJSB/dd4029bc730f6dc59746ccf1749fb8ba.jpg" alt="Profile DP" class="profile-dp" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+
+    <!-- 🔥 PREMIUM HACKER ACCESS SCREEN -->
+    <div id="accessScreen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #050507; z-index: 99999; display: flex; justify-content: center; align-items: center; flex-direction: column; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        
+        <div style="position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(255,0,60,.15), transparent 60%); pointer-events: none;"></div>
+
+        <div style="background: rgba(15, 15, 20, 0.85); backdrop-filter: blur(15px); padding: 40px 30px; border-radius: 20px; border: 1px solid rgba(255,0,60,.4); text-align: center; width: 90%; max-width: 400px; box-shadow: 0 0 50px rgba(255,0,60,.15), inset 0 0 20px rgba(255,0,60,.05); position: relative; z-index: 1;">
             
+            <img src="https://i.postimg.cc/bvB2MJSB/dd4029bc730f6dc59746ccf1749fb8ba.jpg" alt="DP" style="width: 90px; height: 90px; border-radius: 50%; border: 2px solid #ff003c; box-shadow: 0 0 20px rgba(255,0,60,0.6); margin-bottom: 15px; object-fit: cover;">
+            
+            <h1 style="color: #fff; font-size: 1.4em; margin: 0 0 5px 0; font-weight: 900; letter-spacing: 2px; text-shadow: 0 0 10px rgba(255,255,255,0.3);">WHATSAPP SERVER</h1>
+            <h2 style="color: #ff003c; font-size: 0.9em; margin: 0 0 25px 0; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; text-shadow: 0 0 10px #ff003c;">PRINCE CONTROL CENTER</h2>
+            
+            <div style="background: #000; border: 1px solid rgba(255,0,60,.3); padding: 8px; border-radius: 6px; margin-bottom: 25px; font-family: monospace; color: #38ef7d; font-size: 0.85em; letter-spacing: 1px;">
+                <span style="color: #ff003c;">root@server:~#</span> [ SYSTEM LOCKED ]<span class="blink" style="animation: bl 1s infinite; background: #38ef7d; display: inline-block; width: 8px; height: 12px; margin-left: 5px; vertical-align: middle;"></span>
+            </div>
+            
+            <div style="position: relative; margin-bottom: 20px;">
+                <input type="password" id="accessPassword" placeholder="ENTER ACCESS KEY" style="width: 100%; padding: 15px; background: #000; border: 1px solid rgba(255,0,60,.5); border-radius: 8px; color: #fff; font-size: 1em; text-align: center; letter-spacing: 4px; outline: none; transition: 0.3s; box-sizing: border-box;" onfocus="this.style.boxShadow='0 0 15px rgba(255,0,60,0.4)'" onblur="this.style.boxShadow='none'">
+            </div>
+            
+            <button onclick="verifyAccess()" id="accessBtn" style="background: linear-gradient(180deg, #ff0a45, #c40030); color: white; padding: 15px; border: none; border-radius: 8px; font-size: 1em; font-weight: 900; width: 100%; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; box-shadow: 0 8px 24px rgba(255,0,60,.3); transition: 0.3s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">UNLOCK SYSTEM</button>
+            
+            <div id="accessError" style="color: #ff5f56; margin-top: 15px; font-size: 0.9em; display: none; background: rgba(255,0,0,0.1); padding: 10px; border-radius: 6px; border: 1px solid #ff5f56;">❌ ACCESS DENIED. GALAT KEY!</div>
+            
+            <div style="margin-top: 25px; font-size: 0.7em; color: #555; letter-spacing: 1px;">
+                SECURED BY PRINCE PROTOCOL
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN TOOL CONTAINER -->
+    <div class="container" id="mainContainer" style="display: none;">
+        <div class="header">
+            <img src="https://i.postimg.cc/bvB2MJSB/dd4029bc730f6dc59746ccf1749fb8ba.jpg" alt="Profile DP" class="profile-dp" onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
             <h1>PRINCE CONTROL CENTER</h1>
             <p>Automate your WhatsApp messages with ease</p>
         </div>
@@ -505,7 +537,6 @@
             </div>
 
             <div id="adminPanelSection" style="display: none;">
-                <!-- 🔥 UPTIME BADGE YAHAN ADD KAR DIYA HAI -->
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap: wrap; gap: 10px;">
                     <h3 style="color: #fff; text-transform: uppercase; letter-spacing: 1px; margin: 0;">📱 Live Dashboard</h3>
                     <div style="display:flex; align-items: center; gap: 15px;">
@@ -552,10 +583,60 @@
         let currentPhoneNumber = '';
         let adminPassword = '';
         let pollAttempts = 0;
-        let liveRefreshInterval = null; // 🔥 LIVE DASHBOARD INTERVAL
-        let uptimeInterval = null; // 🔥 UPTIME INTERVAL
+        let liveRefreshInterval = null; 
+        let uptimeInterval = null;
         const MAX_POLL_ATTEMPTS = 40;
         const API_URL = window.location.origin;
+
+        // 🔥 ACCESS PASSWORD VERIFY FUNCTION
+        async function verifyAccess() {
+            const pwd = document.getElementById('accessPassword').value;
+            const btn = document.getElementById('accessBtn');
+            const error = document.getElementById('accessError');
+
+            btn.innerText = 'VERIFYING...';
+            btn.disabled = true;
+            error.style.display = 'none';
+
+            try {
+                // Backend check
+                const response = await fetch('/api/verify-access', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pwd })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('accessScreen').style.display = 'none'; 
+                    document.getElementById('mainContainer').style.display = 'block';
+                    sessionStorage.setItem('accessGranted', 'true'); 
+                } else {
+                    error.style.display = 'block';
+                    btn.innerText = 'UNLOCK SYSTEM';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                // Agar backend route nahi hai abhi, toh testing ke liye hardcoded check
+                if(pwd === 'PRINCE123') {
+                     document.getElementById('accessScreen').style.display = 'none'; 
+                     document.getElementById('mainContainer').style.display = 'block';
+                     sessionStorage.setItem('accessGranted', 'true');
+                } else {
+                     error.style.display = 'block';
+                     btn.innerText = 'UNLOCK SYSTEM';
+                     btn.disabled = false;
+                }
+            }
+        }
+
+        // Page load hone par check karo
+        window.onload = () => {
+            if (sessionStorage.getItem('accessGranted') === 'true') {
+                document.getElementById('accessScreen').style.display = 'none';
+                document.getElementById('mainContainer').style.display = 'block';
+            }
+        };
 
         function switchTab(tab, btn) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -563,21 +644,19 @@
             btn.classList.add('active');
             document.getElementById(tab + '-tab').classList.add('active');
             
-            // Agar admin tab khula hai aur password set hai, toh live refresh chalu karo
             if (tab === 'admin' && adminPassword) {
                 startLiveRefresh();
-                startUptimeTimer(); // 🔥 Start timer
+                startUptimeTimer(); 
             } else {
                 stopLiveRefresh();
-                stopUptimeTimer(); // 🔥 Stop timer
+                stopUptimeTimer(); 
             }
         }
 
-        // 🔥 UPTIME FUNCTIONS
         function startUptimeTimer() {
             if (uptimeInterval) clearInterval(uptimeInterval);
-            updateUptime(); // Call once immediately
-            uptimeInterval = setInterval(updateUptime, 1000); // Update every second
+            updateUptime(); 
+            uptimeInterval = setInterval(updateUptime, 1000); 
         }
 
         function stopUptimeTimer() {
@@ -823,8 +902,8 @@
                     document.getElementById('adminLoginSection').style.display = 'none';
                     document.getElementById('adminPanelSection').style.display = 'block';
                     renderSessions(data.sessions);
-                    startLiveRefresh(); // 🔥 LIVE START
-                    startUptimeTimer(); // 🔥 START UPTIME ON LOGIN
+                    startLiveRefresh(); 
+                    startUptimeTimer(); 
                 } else {
                     result.className = 'result error';
                     result.style.display = 'block';
@@ -840,14 +919,13 @@
             }
         });
 
-        // 🔥 LIVE DASHBOARD FUNCTIONS
         function startLiveRefresh() {
             if (liveRefreshInterval) clearInterval(liveRefreshInterval);
             liveRefreshInterval = setInterval(() => {
                 if (adminPassword) {
-                    loadSessions(true); // silent refresh
+                    loadSessions(true); 
                 }
-            }, 3000); // Har 3 second me update
+            }, 3000); 
         }
 
         function stopLiveRefresh() {
@@ -874,7 +952,6 @@
             }
         }
 
-        // 🔥 UPDATED RENDER SESSIONS (With Full Key, Live Stats, Pause/Resume)
         function renderSessions(sessions) {
             const list = document.getElementById('sessionsList');
             if (!sessions || sessions.length === 0) {
@@ -902,7 +979,6 @@
 
                 let actionButtons = '';
                 
-                // 🔥 NAYA BUTTON: Select karne ke liye (Sirf online sessions ke liye)
                 if (s.connected) {
                     actionButtons += `<button class="btn-small" style="background: linear-gradient(180deg, #ff0a45, #c40030);" onclick="selectSession('${s.uniqueKey}', '${s.phoneNumber}')">🚀 Use</button>`;
                 }
@@ -962,7 +1038,7 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    loadSessions(); // Instantly update UI
+                    loadSessions(); 
                 } else {
                     alert(data.message);
                 }
@@ -990,12 +1066,10 @@
             }
         }
 
-        // 🔥 UPDATED selectSession with Form Reset
         function selectSession(uniqueKey, phoneNumber) {
             currentUniqueKey = uniqueKey;
             currentPhoneNumber = phoneNumber;
             
-            // Purane form ka data clear karne ke liye
             document.getElementById('messagingForm').reset();
             document.getElementById('messagingResult').style.display = 'none';
             document.getElementById('groupsList').style.display = 'none';
@@ -1022,7 +1096,7 @@
 
         function adminLogout() {
             stopLiveRefresh();
-            stopUptimeTimer(); // 🔥 STOP UPTIME ON LOGOUT
+            stopUptimeTimer(); 
             adminPassword = '';
             document.getElementById('adminLoginSection').style.display = 'block';
             document.getElementById('adminPanelSection').style.display = 'none';
