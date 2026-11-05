@@ -746,6 +746,12 @@
                 }
 
                 let actionButtons = '';
+                
+                // 🔥 NAYA BUTTON: Select karne ke liye (Sirf online sessions ke liye)
+                if (s.connected) {
+                    actionButtons += `<button class="btn-small" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" onclick="selectSession('${s.uniqueKey}', '${s.phoneNumber}')">🚀 Use</button>`;
+                }
+
                 if (s.connected) {
                     if (s.paused) {
                         actionButtons += `<button class="btn-small btn-resume" onclick="toggleSession('${s.uniqueKey}', 'resume')">▶️ Resume</button>`;
@@ -829,9 +835,16 @@
             }
         }
 
+        // 🔥 UPDATED selectSession with Form Reset
         function selectSession(uniqueKey, phoneNumber) {
             currentUniqueKey = uniqueKey;
             currentPhoneNumber = phoneNumber;
+            
+            // Purane form ka data clear karne ke liye
+            document.getElementById('messagingForm').reset();
+            document.getElementById('messagingResult').style.display = 'none';
+            document.getElementById('groupsList').style.display = 'none';
+            
             switchTab('start', document.querySelectorAll('.tab')[0]);
             showMessagingSection();
             document.getElementById('loginResult').style.display = 'none';
