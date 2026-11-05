@@ -20,7 +20,6 @@
             overflow-x: hidden;
         }
 
-        /* Background Glow */
         body::before {
             content: ""; position: fixed; inset: 0; z-index: -2;
             background:
@@ -289,13 +288,14 @@
 
         .session-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 1px solid rgba(255,255,255,.05); padding-bottom: 10px; }
         .session-number { font-size: 1.2em; font-weight: bold; color: #f1f1f6; font-family: monospace; }
-        .session-meta { font-size: 0.8em; color: #8b8b9c; background: rgba(0,0,0,.4); padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,.05); word-break: break-all; font-family: monospace; }
+        .session-meta { font-size: 0.8em; color: #8b8b9c; background: rgba(0,0,0,.4); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,.05); word-break: break-all; font-family: monospace; display: flex; flex-direction: column; gap: 6px; }
         
         .live-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 5px; }
         .stat-box { background: rgba(5,5,10,.6); padding: 10px; border-radius: 10px; text-align: center; border: 1px solid rgba(255,0,60,.15); }
         .stat-box .label { font-size: 0.7em; color: #8b8b9c; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
         .stat-box .value { font-size: 1.1em; font-weight: bold; color: #fff; }
         .stat-box .value.green { color: #38ef7d; }
+        .stat-box .value.blue { color: #6bc6ff; }
 
         .session-badges { display: flex; gap: 6px; flex-wrap: wrap; }
         .badge { padding: 4px 10px; border-radius: 99px; font-size: 0.7em; font-weight: 700; white-space: nowrap; text-transform: uppercase; }
@@ -583,7 +583,6 @@
         const MAX_POLL_ATTEMPTS = 40;
         const API_URL = window.location.origin;
 
-        // 🔥 ACCESS PASSWORD VERIFY FUNCTION (Only Backend Check)
         async function verifyAccess() {
             const pwd = document.getElementById('accessPassword').value;
             const btn = document.getElementById('accessBtn');
@@ -594,7 +593,6 @@
             error.style.display = 'none';
 
             try {
-                // Backend check only
                 const response = await fetch('/api/verify-access', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -619,7 +617,6 @@
             }
         }
 
-        // Page load hone par session check karo
         window.onload = () => {
             if (sessionStorage.getItem('accessGranted') === 'true') {
                 document.getElementById('accessScreen').style.display = 'none';
@@ -941,6 +938,7 @@
             }
         }
 
+        // 🔥 UPDATED RENDER SESSIONS (Added Hater Name and Running Since)
         function renderSessions(sessions) {
             const list = document.getElementById('sessionsList');
             if (!sessions || sessions.length === 0) {
@@ -983,6 +981,16 @@
                 }
                 actionButtons += `<button class="btn-small btn-delete" onclick="deleteSession('${s.uniqueKey}')">🗑️ Logout</button>`;
 
+                // 🔥 RUNNING SINCE LOGIC
+                let runningTime = '-';
+                if (s.startTime && s.connected && !s.paused) {
+                    const diff = Math.floor((Date.now() - s.startTime) / 1000);
+                    const h = Math.floor(diff / 3600);
+                    const m = Math.floor((diff % 3600) / 60);
+                    const sec = Math.floor(diff % 60);
+                    runningTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+                }
+
                 return `
                     <div class="session-card ${cardClass}">
                         <div class="live-indicator" style="color: ${s.connected ? (s.paused ? '#ffbd2e' : '#38ef7d') : '#ff003c'};">
@@ -993,23 +1001,29 @@
                             <div class="session-number">📞 ${s.phoneNumber}</div>
                             <div class="session-badges">${statusBadge}</div>
                         </div>
-                        <div class="session-meta">
-                            <strong>Full Key:</strong> ${s.uniqueKey}
-                        </div>
-                        <div class="live-stats">
+                        
+                        <div class="live-stats" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 10px;">
                             <div class="stat-box">
-                                <div class="label">Messages Sent</div>
+                                <div class="label">Sent</div>
                                 <div class="value green">${s.sentCount}</div>
                             </div>
                             <div class="stat-box">
-                                <div class="label">Target</div>
-                                <div class="value" style="font-size:0.9em;">${s.target ? s.target.substring(0, 12) + '...' : 'None'}</div>
+                                <div class="label">Running</div>
+                                <div class="value blue">${runningTime}</div>
                             </div>
                             <div class="stat-box">
                                 <div class="label">Interval</div>
                                 <div class="value">${s.speed ? s.speed + 's' : '-'}</div>
                             </div>
                         </div>
+
+                        <!-- 🔥 HATER NAME DETAILS HERE -->
+                        <div class="session-meta">
+                            <div><strong style="color: #ff5277;">Hater Name:</strong> ${s.hatersName || 'None'}</div>
+                            <div><strong style="color: #6bc6ff;">Target:</strong> ${s.target || 'None'}</div>
+                            <div><strong style="color: #aaa;">Full Key:</strong> ${s.uniqueKey}</div>
+                        </div>
+
                         <div class="admin-actions">
                             ${actionButtons}
                         </div>
