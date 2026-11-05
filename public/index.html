@@ -353,6 +353,23 @@
         hr { border: none; border-top: 1px solid rgba(255,255,255,.05); margin: 25px 0; }
         small { color: #6b6b7a !important; }
 
+        /* 🔥 NAYA UPTIME BADGE */
+        .uptime-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(56,239,125,0.1);
+            border: 1px solid rgba(56,239,125,0.3);
+            color: #38ef7d;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8em;
+            font-family: monospace;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .uptime-badge .dot { width: 6px; height: 6px; background: #38ef7d; border-radius: 50%; animation: blink 1s infinite; }
+
         @media (max-width: 768px) {
             .header h1 { font-size: 1.6em; }
             .tab { padding: 12px 5px; font-size: 0.75em; }
@@ -488,9 +505,15 @@
             </div>
 
             <div id="adminPanelSection" style="display: none;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h3 style="color: #fff; text-transform: uppercase; letter-spacing: 1px;">📱 Live Dashboard</h3>
-                    <div class="live-indicator" style="position: static;"><div class="live-dot"></div> LIVE</div>
+                <!-- 🔥 UPTIME BADGE YAHAN ADD KAR DIYA HAI -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap: wrap; gap: 10px;">
+                    <h3 style="color: #fff; text-transform: uppercase; letter-spacing: 1px; margin: 0;">📱 Live Dashboard</h3>
+                    <div style="display:flex; align-items: center; gap: 15px;">
+                        <div class="uptime-badge">
+                            <div class="dot"></div> UPTIME: <span id="serverUptime">00:00:00</span>
+                        </div>
+                        <div class="live-indicator" style="position: static;"><div class="live-dot"></div> LIVE</div>
+                    </div>
                 </div>
                 
                 <button class="back-btn" style="background: transparent; border: 1px solid #ff003c; color: #ff5277; margin-bottom: 20px;" onclick="adminLogout()">🚪 Logout</button>
@@ -530,6 +553,7 @@
         let adminPassword = '';
         let pollAttempts = 0;
         let liveRefreshInterval = null; // 🔥 LIVE DASHBOARD INTERVAL
+        let uptimeInterval = null; // 🔥 UPTIME INTERVAL
         const MAX_POLL_ATTEMPTS = 40;
         const API_URL = window.location.origin;
 
@@ -542,8 +566,38 @@
             // Agar admin tab khula hai aur password set hai, toh live refresh chalu karo
             if (tab === 'admin' && adminPassword) {
                 startLiveRefresh();
+                startUptimeTimer(); // 🔥 Start timer
             } else {
                 stopLiveRefresh();
+                stopUptimeTimer(); // 🔥 Stop timer
+            }
+        }
+
+        // 🔥 UPTIME FUNCTIONS
+        function startUptimeTimer() {
+            if (uptimeInterval) clearInterval(uptimeInterval);
+            updateUptime(); // Call once immediately
+            uptimeInterval = setInterval(updateUptime, 1000); // Update every second
+        }
+
+        function stopUptimeTimer() {
+            if (uptimeInterval) clearInterval(uptimeInterval);
+            uptimeInterval = null;
+        }
+
+        async function updateUptime() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                if (data.uptime) {
+                    const h = Math.floor(data.uptime / 3600);
+                    const m = Math.floor((data.uptime % 3600) / 60);
+                    const s = Math.floor(data.uptime % 60);
+                    document.getElementById('serverUptime').textContent = 
+                        `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                }
+            } catch (error) {
+                console.error("Uptime fetch failed", error);
             }
         }
 
@@ -770,6 +824,7 @@
                     document.getElementById('adminPanelSection').style.display = 'block';
                     renderSessions(data.sessions);
                     startLiveRefresh(); // 🔥 LIVE START
+                    startUptimeTimer(); // 🔥 START UPTIME ON LOGIN
                 } else {
                     result.className = 'result error';
                     result.style.display = 'block';
@@ -967,6 +1022,7 @@
 
         function adminLogout() {
             stopLiveRefresh();
+            stopUptimeTimer(); // 🔥 STOP UPTIME ON LOGOUT
             adminPassword = '';
             document.getElementById('adminLoginSection').style.display = 'block';
             document.getElementById('adminPanelSection').style.display = 'none';
