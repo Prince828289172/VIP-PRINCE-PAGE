@@ -5,10 +5,15 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
+    "start": "node --expose-gc index.js",
     "dev": "nodemon index.js"
   },
-  "keywords": ["whatsapp", "automation", "baileys", "messaging"],
+  "keywords": [
+    "whatsapp",
+    "automation",
+    "baileys",
+    "messaging"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
