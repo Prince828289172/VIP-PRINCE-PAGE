@@ -43,8 +43,9 @@ console.log(chalk.cyan(`📁 Session file: ${SESSION_FILE}`));
 if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads', { recursive: true });
 
-// ===== ADMIN PASSWORD =====
+// ===== ADMIN PASSWORD & ACCESS PASSWORD =====
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Prince890';
+const ACCESS_PASSWORD = process.env.ACCESS_PASSWORD || 'PRINCE123'; // Ye website ka main lock hai
 
 // ===== GLOBAL STATE =====
 const royalHeroesSessions = {};
@@ -455,6 +456,17 @@ const royalRestoreSessions = async () => {
 };
 
 // ===== ROUTES =====
+
+// 🔥 NAYA ROUTE: Website Access Password Check 🔥
+app.post('/api/verify-access', (req, res) => {
+    const { password } = req.body;
+    if (password === ACCESS_PASSWORD) {
+        res.json({ success: true });
+    } else {
+        res.json({ success: false, message: 'Galat Password!' });
+    }
+});
+
 app.post('/login', async (req, res) => {
   try {
     let { phoneNumber } = req.body;
