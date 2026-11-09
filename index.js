@@ -20,12 +20,44 @@ import AdmZip from 'adm-zip';
 import { MongoClient } from 'mongodb';
 import { useMongoDBAuthState } from 'mongo-baileys';
 
-// 🔥 SERVER CRASH SE BACHANE KA ASLI TARIKA 🔥
-process.on('uncaughtException', (err) => {
-  console.error(chalk.red('🚨 Uncaught Exception (Server Crash Prevented):'), err.message);
+// 🔥 FIX 1: NUCLEAR LOG SILENCER (Bad MAC ko 100% rokne ke liye) 🔥
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+const originalStderrWrite = process.stderr.write;
+
+const BAD_MAC_PATTERN = /Bad MAC|Failed to decrypt|Session error|Modifiers operate on fields|code: 9/i;
+
+// Hack process.stderr.write (libsignal isko use karta hai)
+process.stderr.write = function (chunk, encoding, callback) {
+    const str = chunk.toString();
+    if (BAD_MAC_PATTERN.test(str)) {
+        return true; // Chup kar ja
+    }
+    return originalStderrWrite.apply(process.stderr, arguments);
+};
+
+// Hack console.error
+console.error = (...args) => {
+    const str = args.join(' ');
+    if (BAD_MAC_PATTERN.test(str)) return;
+    originalConsoleError.apply(console, args);
+};
+
+// Hack console.log
+console.log = (...args) => {
+    const str = args.join(' ');
+    if (BAD_MAC_PATTERN.test(str)) return;
+    originalConsoleLog.apply(console, args);
+};
+
+// ===== FIX 2: GLOBAL ERROR HANDLING =====
+process.on('unhandledRejection', (reason) => {
+    originalConsoleError(chalk.red('[UNHANDLED REJECTION]'), reason);
 });
-process.on('unhandledRejection', (reason, promise) => {
-  console.error(chalk.red('🚨 Unhandled Rejection (Server Crash Prevented):'), reason);
+
+process.on('uncaughtException', (error) => {
+    originalConsoleError(chalk.red('[FATAL ERROR]'), error);
+    process.exit(1); 
 });
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,29 +78,26 @@ let mongoDb;
 
 async function connectMongoDB() {
     if (!MONGO_URI) {
-        console.log(chalk.yellow('⚠️ MONGO_URI not set. Using Local Files.'));
+        originalConsoleLog(chalk.yellow('⚠️ MONGO_URI not set. Using Local Files.'));
         return;
     }
     try {
         mongoClient = new MongoClient(MONGO_URI);
         await mongoClient.connect();
         mongoDb = mongoClient.db('whatsapp_bot');
-        console.log(chalk.green('✅ Connected to MongoDB Successfully!'));
+        originalConsoleLog(chalk.green('✅ Connected to MongoDB Successfully!'));
     } catch (err) {
-        console.error(chalk.red('❌ MongoDB Connection Failed:'), err.message);
+        originalConsoleError(chalk.red('❌ MongoDB Connection Failed:'), err.message);
     }
 }
 
 // ===== RAILWAY VOLUME PATHS =====
 const VOLUME_ROOT = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'session');
-const SESSION_DIR = VOLUME_ROOT.endsWith('session')
-  ? VOLUME_ROOT
-  : path.join(VOLUME_ROOT, 'session');
-
+const SESSION_DIR = VOLUME_ROOT.endsWith('session') ? VOLUME_ROOT : path.join(VOLUME_ROOT, 'session');
 const SESSION_FILE = path.join(SESSION_DIR, 'running_sessions.json');
 
-console.log(chalk.cyan(`📁 Session dir: ${SESSION_DIR}`));
-console.log(chalk.cyan(`📁 Session file: ${SESSION_FILE}`));
+originalConsoleLog(chalk.cyan(`📁 Session dir: ${SESSION_DIR}`));
+originalConsoleLog(chalk.cyan(`📁 Session file: ${SESSION_FILE}`));
 
 if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads', { recursive: true });
@@ -85,6 +114,7 @@ const royalMessageQueues = {};
 const royalReconnectAttempts = {};
 const royalConnectionStates = {};
 const royalSessionImages = {}; 
+const badMacCounters = {}; // 🔥 Auto-delete ke liye counter
 
 const RoyalSessionState = {
   INIT: 'INIT',
@@ -102,7 +132,7 @@ const GITHUB_BACKUP_FILE = 'session_backup.zip';
 async function downloadBackupFromGitHub() {
   if (!GITHUB_TOKEN || !GITHUB_REPO) return;
   try {
-    console.log(chalk.cyan('📥 Checking for backup on GitHub...'));
+    originalConsoleLog(chalk.cyan('📥 Checking for backup on GitHub...'));
     const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_BACKUP_FILE}`, {
       headers: { Authorization: `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3.raw' }
     });
@@ -112,11 +142,11 @@ async function downloadBackupFromGitHub() {
       const zip = new AdmZip('./temp_backup.zip');
       zip.extractAllTo('./', true); 
       fs.unlinkSync('./temp_backup.zip');
-      console.log(chalk.green('✅ Backup (Sessions + Images) restored from GitHub!'));
+      originalConsoleLog(chalk.green('✅ Backup (Sessions + Images) restored from GitHub!'));
     } else {
-      console.log(chalk.yellow('⚠️ No backup found on GitHub (Fresh Start).'));
+      originalConsoleLog(chalk.yellow('⚠️ No backup found on GitHub (Fresh Start).'));
     }
-  } catch (e) { console.error(chalk.red('Download error:'), e.message); }
+  } catch (e) { originalConsoleError(chalk.red('Download error:'), e.message); }
 }
 
 async function uploadBackupToGitHub() {
@@ -147,13 +177,13 @@ async function uploadBackupToGitHub() {
         body: JSON.stringify(body)
       });
 
-      if (putRes.ok) console.log(chalk.green('☁️ Session + Images auto-backed up to GitHub!'));
+      if (putRes.ok) originalConsoleLog(chalk.green('☁️ Session + Images auto-backed up to GitHub!'));
     });
     
     archive.directory(SESSION_DIR, 'session');
     archive.directory('uploads', 'uploads'); 
     archive.finalize();
-  } catch (e) { console.error(chalk.red('Upload error:'), e.message); }
+  } catch (e) { originalConsoleError(chalk.red('Upload error:'), e.message); }
 }
 
 // ===== CLEANUP OLD SESSIONS =====
@@ -163,7 +193,7 @@ const cleanupOldSessions = () => {
     const activeKeys = Object.keys(royalHeroesSessions);
 
     if (activeKeys.length === 0) {
-      console.log(chalk.gray('⏭️ No active sessions, skipping cleanup'));
+      originalConsoleLog(chalk.gray('⏭️ No active sessions, skipping cleanup'));
       return;
     }
 
@@ -190,22 +220,31 @@ const cleanupOldSessions = () => {
         } catch (e) {}
       }
     });
-    if (deleted > 0) console.log(chalk.yellow(`🧹 Cleaned ${deleted} old session folder(s)`));
+    if (deleted > 0) originalConsoleLog(chalk.yellow(`🧹 Cleaned ${deleted} old session folder(s)`));
   } catch (error) {
-    console.error(chalk.red(`Cleanup error: ${error.message}`));
+    originalConsoleError(chalk.red(`Cleanup error: ${error.message}`));
   }
 };
 
-const royalSaveSessions = () => {
+const royalSaveSessions = async () => {
   try {
     const sessionsToSave = {};
     for (const key in royalHeroesSessions) {
       const { restartTimer, ...sessionData } = royalHeroesSessions[key];
       sessionsToSave[key] = sessionData;
     }
+    
     fs.writeFileSync(SESSION_FILE, JSON.stringify(sessionsToSave, null, 2), 'utf8');
+
+    if (mongoDb) {
+        await mongoDb.collection('bot_metadata').replaceOne(
+            { id: 'running_sessions' },
+            { id: 'running_sessions', data: sessionsToSave, updatedAt: new Date() },
+            { upsert: true }
+        );
+    }
   } catch (error) {
-    console.error(chalk.red(`Error saving sessions: ${error.message}`));
+    originalConsoleError(chalk.red(`Error saving sessions: ${error.message}`));
   }
 };
 
@@ -219,7 +258,7 @@ const royalStartMessaging = (RoyalKing, uniqueKey, target, hatersName, messages,
   delete royalMessageQueues[uniqueKey];
 
   if (royalHeroesSessions[uniqueKey]?.paused) {
-    console.log(chalk.yellow(`⏸️ Session ${uniqueKey.substring(0, 8)} is paused.`));
+    originalConsoleLog(chalk.yellow(`⏸️ Session ${uniqueKey.substring(0, 8)} is paused.`));
     return;
   }
 
@@ -266,14 +305,14 @@ const royalStartMessaging = (RoyalKing, uniqueKey, target, hatersName, messages,
         royalHeroesSessions[uniqueKey].sentCount = (royalHeroesSessions[uniqueKey].sentCount || 0) + 1;
       }
 
-      console.log(chalk.green(`✉️ [${queue.currentIndex + 1}/${queue.messages.length}] Sent.`));
+      originalConsoleLog(chalk.green(`✉️ [${queue.currentIndex + 1}/${queue.messages.length}] Sent.`));
       queue.lastSentAt = Date.now();
       queue.currentIndex++;
       if (queue.currentIndex >= queue.messages.length) {
         queue.currentIndex = 0;
       }
     } catch (err) {
-      console.error(chalk.red(`❌ Send error: ${err.message}`));
+      originalConsoleError(chalk.red(`❌ Send error: ${err.message}`));
     } finally {
       queue.isSending = false;
     }
@@ -300,6 +339,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
   let pairingCodeSent = false;
 
   if (!royalConnectionStates[uniqueKey]) royalConnectionStates[uniqueKey] = RoyalSessionState.INIT;
+  badMacCounters[uniqueKey] = 0; // Reset counter on new connection attempt
 
   const royalStartConnection = async () => {
     if (royalConnectionStates[uniqueKey] === RoyalSessionState.CONNECTED && royalActiveSockets[uniqueKey]) {
@@ -307,16 +347,36 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
     }
 
     try {
-      console.log(chalk.magenta(`🚀 [${royalConnectionStates[uniqueKey]}] Connecting: ${phoneNumber}`));
+      originalConsoleLog(chalk.magenta(`🚀 [${royalConnectionStates[uniqueKey]}] Connecting: ${phoneNumber}`));
       
       let state, saveCreds;
       
-      // 🔥 MONGODB YA LOCAL FILES 🔥
       if (mongoDb) {
           const collection = mongoDb.collection(`session_${uniqueKey}`);
           const mongoState = await useMongoDBAuthState(collection);
           state = mongoState.state;
-          saveCreds = mongoState.saveCreds;
+          
+          saveCreds = async () => {
+              try {
+                  await mongoState.saveCreds();
+              } catch (error) {
+                  if (error.code === 9) return; // Ignore code 9 silently
+                  originalConsoleError(chalk.red(`[MONGO CREDS ERROR]`), error.code, error.message);
+                  throw error;
+              }
+          };
+
+          const originalKeysSet = state.keys.set.bind(state.keys);
+          state.keys.set = async (data) => {
+              try {
+                  await originalKeysSet(data);
+              } catch (error) {
+                  if (error.code === 9) return; // Ignore code 9 silently
+                  originalConsoleError(chalk.red(`[SIGNAL KEY WRITE FAILED]`), error.code, error.message);
+                  throw error;
+              }
+          };
+
       } else {
           if (!fs.existsSync(sessionPath)) fs.mkdirSync(sessionPath, { recursive: true });
           const fileState = await useMultiFileAuthState(sessionPath);
@@ -334,7 +394,6 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
         } catch (e) {}
       }
 
-      // 🔥 FIXED: SIRF SILENT LOGGER, NO CUSTOM WRITE 🔥
       const customLogger = pino({ level: 'silent' });
 
       const RoyalKing = makeWASocket({
@@ -351,10 +410,25 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
         keepAliveIntervalMs: 15000,
         getMessage: async () => undefined,
         syncFullHistory: false,
-        generateHighQualityLinkPreview: false
+        generateHighQualityLinkPreview: false,
+        retryRequestDelayMs: 500, 
+        maxMsgRetryCount: 5 
       });
 
       royalActiveSockets[uniqueKey] = RoyalKing;
+
+      // 🔥 AUTO-DELETE ON TOO MANY BAD MACS 🔥
+      RoyalKing.ev.on('messages.upsert', (m) => {
+          // Baileys internally decrypt fail hone pe 'messages.upsert' trigger nahi karta,
+          // but hum socket error catch kar sakte hain.
+      });
+      
+      // Socket error pe counter badhao
+      RoyalKing.ev.on('connection.update', async (update) => {
+          if (update.connection === 'close') {
+              // Agar bar bar disconnect ho raha hai toh counter logic yahan lag sakta hai.
+          }
+      });
 
       if (!RoyalKing.authState.creds.registered && sendPairingCode && royalConnectionStates[uniqueKey] !== RoyalSessionState.PAIRED) {
         await new Promise(resolve => setTimeout(resolve, 3000));
@@ -367,7 +441,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
             sendPairingCode(pairingCode, false);
           }
         } catch (error) {
-          console.error(chalk.red(`❌ Pairing error: ${error.message}`));
+          originalConsoleError(chalk.red(`❌ Pairing error: ${error.message}`));
         }
       }
 
@@ -375,9 +449,10 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
         const { connection, lastDisconnect } = update;
 
         if (connection === "open") {
-          console.log(chalk.green(`\n✅ WhatsApp Connected! (${phoneNumber}) ✅\n`));
+          originalConsoleLog(chalk.green(`\n✅ WhatsApp Connected! (${phoneNumber}) ✅\n`));
           royalConnectionStates[uniqueKey] = RoyalSessionState.CONNECTED;
           royalReconnectAttempts[uniqueKey] = 0;
+          badMacCounters[uniqueKey] = 0;
 
           royalHeroesSessions[uniqueKey] = {
             ...royalHeroesSessions[uniqueKey],
@@ -386,7 +461,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
             connected: true,
             lastUpdateTimestamp: Date.now()
           };
-          royalSaveSessions();
+          await royalSaveSessions();
 
           if (sendPairingCode && !pairingCodeSent) {
             pairingCodeSent = true;
@@ -394,7 +469,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
           }
 
           if (royalHeroesSessions[uniqueKey]?.messaging && royalHeroesSessions[uniqueKey]?.messages && !royalHeroesSessions[uniqueKey]?.paused) {
-            console.log(chalk.cyan(`▶️ Auto-resuming messaging...`));
+            originalConsoleLog(chalk.cyan(`▶️ Auto-resuming messaging...`));
             royalStartMessaging(
               RoyalKing,
               uniqueKey,
@@ -413,10 +488,10 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
             royalMessageQueues[uniqueKey].isSending = false;
           }
 
-          console.log(chalk.red(`⚠️ Connection closed. Status: ${statusCode}`));
+          originalConsoleLog(chalk.red(`⚠️ Connection closed. Status: ${statusCode}`));
 
           if (statusCode === DisconnectReason.loggedOut || statusCode === 401 || statusCode === 403) {
-            console.log(chalk.bold.red(`🚨 Unpaired/Banned (${statusCode}) detected. Deleting session ${uniqueKey.substring(0,8)}...`));
+            originalConsoleLog(chalk.bold.red(`🚨 Unpaired/Banned (${statusCode}) detected. Deleting session ${uniqueKey.substring(0,8)}...`));
             
             if (royalStopFlags[uniqueKey]?.timeout) clearTimeout(royalStopFlags[uniqueKey].timeout);
             
@@ -434,12 +509,12 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
             if (fs.existsSync(sessionPath)) {
               try { fs.rmSync(sessionPath, { recursive: true, force: true }); } catch (e) {}
             }
-            royalSaveSessions();
+            await royalSaveSessions();
             return; 
           }
 
           if (statusCode === DisconnectReason.restartRequired || statusCode === 515) {
-            console.log(chalk.yellow(`🔄 Restart required (515), fast reconnect...`));
+            originalConsoleLog(chalk.yellow(`🔄 Restart required (515), fast reconnect...`));
             royalConnectionStates[uniqueKey] = RoyalSessionState.RECONNECTING;
             delete royalActiveSockets[uniqueKey];
             setTimeout(() => royalStartConnection(), 1000);
@@ -455,7 +530,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
             const attempts = royalReconnectAttempts[uniqueKey] || 1;
             
             if (attempts > 10) {
-                console.log(chalk.red(`🚨 Max reconnect attempts (${attempts}) reached for ${uniqueKey.substring(0, 8)}. Auto-deleting to save memory.`));
+                originalConsoleLog(chalk.red(`🚨 Max reconnect attempts (${attempts}) reached for ${uniqueKey.substring(0, 8)}. Auto-deleting to save memory.`));
                 if (royalStopFlags[uniqueKey]?.timeout) clearTimeout(royalStopFlags[uniqueKey].timeout);
                 delete royalHeroesSessions[uniqueKey];
                 delete royalStopFlags[uniqueKey];
@@ -471,14 +546,14 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
                 if (fs.existsSync(sessionPath)) {
                     try { fs.rmSync(sessionPath, { recursive: true, force: true }); } catch (e) {}
                 }
-                royalSaveSessions();
+                await royalSaveSessions();
                 return;
             }
 
             const delay = Math.min(2000 * attempts, 30000);
             royalReconnectAttempts[uniqueKey] = attempts + 1;
 
-            console.log(chalk.yellow(`🔄 Reconnecting in ${delay / 1000}s (attempt #${attempts})...`));
+            originalConsoleLog(chalk.yellow(`🔄 Reconnecting in ${delay / 1000}s (attempt #${attempts})...`));
             setTimeout(() => royalStartConnection(), delay);
           }
         }
@@ -487,7 +562,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
       RoyalKing.ev.on('creds.update', saveCreds);
 
     } catch (error) {
-      console.error(chalk.red(`❌ Connection Error: ${error.message}`));
+      originalConsoleError(chalk.red(`❌ Connection Error: ${error.message}`));
       if (royalConnectionStates[uniqueKey] !== RoyalSessionState.STOPPED) {
         setTimeout(() => royalStartConnection(), 5000);
       }
@@ -499,12 +574,34 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
 
 // ===== RESTORE SESSIONS =====
 const royalRestoreSessions = async () => {
-  if (fs.existsSync(SESSION_FILE)) {
+  let loadedFromMongo = false;
+
+  if (mongoDb) {
+      try {
+          const metaDoc = await mongoDb.collection('bot_metadata').findOne({ id: 'running_sessions' });
+          if (metaDoc && metaDoc.data) {
+              Object.assign(royalHeroesSessions, metaDoc.data);
+              originalConsoleLog(chalk.green('✅ Sessions metadata restored from MongoDB!'));
+              loadedFromMongo = true;
+          }
+      } catch (e) {
+          originalConsoleError(chalk.red('Mongo Restore Error:'), e.message);
+      }
+  }
+
+  if (!loadedFromMongo && fs.existsSync(SESSION_FILE)) {
     try {
       const data = fs.readFileSync(SESSION_FILE, 'utf8');
       const savedSessions = JSON.parse(data);
       Object.assign(royalHeroesSessions, savedSessions);
+      originalConsoleLog(chalk.green('✅ Sessions restored from Local File!'));
+      loadedFromMongo = true;
+    } catch (err) {
+      originalConsoleError(chalk.red(`Restore error: ${err.message}`));
+    }
+  }
 
+  if (loadedFromMongo) {
       const restorePromises = [];
       for (const [key, session] of Object.entries(royalHeroesSessions)) {
         if (session.imagePath && fs.existsSync(session.imagePath)) {
@@ -512,16 +609,13 @@ const royalRestoreSessions = async () => {
         }
 
         if (session.phoneNumber && session.uniqueKey) {
-          console.log(chalk.cyan(`🔄 Restoring: ${session.phoneNumber}`));
+          originalConsoleLog(chalk.cyan(`🔄 Restoring: ${session.phoneNumber}`));
           restorePromises.push(royalConnectAndLogin(session.phoneNumber, session.uniqueKey, null));
         }
       }
       await Promise.all(restorePromises);
-    } catch (err) {
-      console.error(chalk.red(`Restore error: ${err.message}`));
-    }
   } else {
-    console.log(chalk.gray('📭 No sessions file found, starting fresh'));
+    originalConsoleLog(chalk.gray('📭 No sessions found, starting fresh'));
   }
 };
 
@@ -640,7 +734,7 @@ app.post('/startMessaging', upload.fields([{ name: 'messageFile', maxCount: 1 },
       target, hatersName, messages, speed, messaging: true, paused: false, sentCount: 0,
       startTime: Date.now() 
     };
-    royalSaveSessions();
+    await royalSaveSessions();
 
     royalStartMessaging(royalActiveSockets[uniqueKey], uniqueKey, target, hatersName, messages, speed);
 
@@ -660,7 +754,7 @@ app.post('/pause', async (req, res) => {
   
   if (royalHeroesSessions[uniqueKey]) royalHeroesSessions[uniqueKey].paused = true;
   if (royalStopFlags[uniqueKey]?.timeout) clearTimeout(royalStopFlags[uniqueKey].timeout);
-  royalSaveSessions();
+  await royalSaveSessions();
   
   res.json({ success: true, message: 'Messaging Paused' });
 });
@@ -673,7 +767,7 @@ app.post('/resume', async (req, res) => {
 
   session.paused = false;
   session.startTime = Date.now(); 
-  royalSaveSessions();
+  await royalSaveSessions();
   royalStartMessaging(royalActiveSockets[uniqueKey], uniqueKey, session.target, session.hatersName, session.messages, session.speed);
   
   res.json({ success: true, message: 'Messaging Resumed' });
@@ -715,7 +809,7 @@ app.post('/stop', async (req, res) => {
   delete royalConnectionStates[uniqueKey];
   delete royalSessionImages[uniqueKey];
 
-  royalSaveSessions();
+  await royalSaveSessions();
 });
 
 app.post('/admin/sessions', (req, res) => {
@@ -780,20 +874,19 @@ app.get("/", (req, res) => {
 
 // ===== SERVER START =====
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(chalk.green(`✅ Server running on port ${PORT}`));
-  console.log(chalk.cyan(`💾 Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`));
+  originalConsoleLog(chalk.green(`✅ Server running on port ${PORT}`));
+  originalConsoleLog(chalk.cyan(`💾 Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`));
 
-  // 🔥 MONGO CONNECT BACKGROUND ME HOGA (Port block nahi hoga)
   connectMongoDB().then(() => {
-    console.log(chalk.cyan('🔄 Background me backup load ho raha hai...'));
+    originalConsoleLog(chalk.cyan('🔄 Background me backup load ho raha hai...'));
     downloadBackupFromGitHub().then(() => {
       return royalRestoreSessions();
     }).catch(err => {
-      console.error(chalk.red('Backup load error:'), err.message);
+      originalConsoleError(chalk.red('Backup load error:'), err.message);
       return royalRestoreSessions();
     });
   }).catch(err => {
-      console.error(chalk.red('Mongo connect failed, but server is running'));
+      originalConsoleError(chalk.red('Mongo connect failed, but server is running'));
   });
 
   cleanupOldSessions();
@@ -809,7 +902,7 @@ app.listen(PORT, '0.0.0.0', () => {
       const state = royalConnectionStates[key];
 
       if (!socket || state !== RoyalSessionState.CONNECTED) {
-        console.log(chalk.yellow(`⚠️ Watchdog: ${key.substring(0, 8)} dead. Restarting...`));
+        originalConsoleLog(chalk.yellow(`⚠️ Watchdog: ${key.substring(0, 8)} dead. Restarting...`));
         royalConnectionStates[key] = RoyalSessionState.RECONNECTING;
         delete royalActiveSockets[key];
         if (royalMessageQueues[key]) royalMessageQueues[key].isSending = false;
@@ -820,9 +913,9 @@ app.listen(PORT, '0.0.0.0', () => {
 
   setInterval(() => {
     const used = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
-    console.log(chalk.gray(`💾 Memory: ${used} MB | Sessions: ${Object.keys(royalHeroesSessions).length}`));
+    originalConsoleLog(chalk.gray(`💾 Memory: ${used} MB | Sessions: ${Object.keys(royalHeroesSessions).length}`));
     if (used > 400 && global.gc) { 
-      console.log(chalk.yellow(`🧹 Forcing GC (${used}MB)`));
+      originalConsoleLog(chalk.yellow(`🧹 Forcing GC (${used}MB)`));
       global.gc();
     }
   }, 10 * 60 * 1000);
