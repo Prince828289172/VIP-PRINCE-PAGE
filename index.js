@@ -17,6 +17,8 @@ import { Boom } from '@hapi/boom';
 import cors from 'cors';
 import archiver from 'archiver';
 import AdmZip from 'adm-zip';
+import { MongoClient } from 'mongodb';
+import { useMongoDBAuthState } from 'mongo-baileys';
 
 // 🔥 FIX 1: SERVER CRASH SE BACHANE KA ASLI TARIKA 🔥
 process.on('uncaughtException', (err) => {
@@ -36,6 +38,26 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+// ===== MONGO DB SETUP =====
+const MONGO_URI = process.env.MONGO_URI; 
+let mongoClient;
+let mongoDb;
+
+async function connectMongoDB() {
+    if (!MONGO_URI) {
+        console.log(chalk.yellow('⚠️ MONGO_URI not set. Using Local Files.'));
+        return;
+    }
+    try {
+        mongoClient = new MongoClient(MONGO_URI);
+        await mongoClient.connect();
+        mongoDb = mongoClient.db('whatsapp_bot');
+        console.log(chalk.green('✅ Connected to MongoDB Successfully!'));
+    } catch (err) {
+        console.error(chalk.red('❌ MongoDB Connection Failed:'), err.message);
+    }
+}
 
 // ===== RAILWAY VOLUME PATHS =====
 const VOLUME_ROOT = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'session');
@@ -286,9 +308,22 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
 
     try {
       console.log(chalk.magenta(`🚀 [${royalConnectionStates[uniqueKey]}] Connecting: ${phoneNumber}`));
-      if (!fs.existsSync(sessionPath)) fs.mkdirSync(sessionPath, { recursive: true });
+      
+      let state, saveCreds;
+      
+      // 🔥 FIX 2: MONGODB YA LOCAL FILES CHOOSE KARO 🔥
+      if (mongoDb) {
+          const collection = mongoDb.collection(`session_${uniqueKey}`);
+          const mongoState = await useMongoDBAuthState(collection);
+          state = mongoState.state;
+          saveCreds = mongoState.saveCreds;
+      } else {
+          if (!fs.existsSync(sessionPath)) fs.mkdirSync(sessionPath, { recursive: true });
+          const fileState = await useMultiFileAuthState(sessionPath);
+          state = fileState.state;
+          saveCreds = fileState.saveCreds;
+      }
 
-      const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
       const { version } = await fetchLatestBaileysVersion();
 
       if (royalActiveSockets[uniqueKey]) {
@@ -299,7 +334,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
         } catch (e) {}
       }
 
-      // 🔥 FIX 2: CUSTOM LOGGER TO STOP BAD MAC LOOP 🔥
+      // 🔥 FIX 3: CUSTOM LOGGER TO STOP BAD MAC LOOP 🔥
       const customLogger = pino({ level: 'silent' }, {
         write: (msg) => {
             if (msg.includes('Bad MAC')) return; // Ignore Bad MAC to save RAM
@@ -309,7 +344,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
 
       const RoyalKing = makeWASocket({
         version,
-        logger: customLogger, // Custom logger used here
+        logger: customLogger,
         browser: Browsers.ubuntu('Chrome'),
         auth: {
           creds: state.creds,
@@ -398,6 +433,9 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
             delete royalSessionImages[uniqueKey];
             delete royalActiveSockets[uniqueKey];
 
+            if (mongoDb) {
+                try { await mongoDb.collection(`session_${uniqueKey}`).drop(); } catch (e) {}
+            }
             if (fs.existsSync(sessionPath)) {
               try { fs.rmSync(sessionPath, { recursive: true, force: true }); } catch (e) {}
             }
@@ -421,8 +459,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
 
             const attempts = royalReconnectAttempts[uniqueKey] || 1;
             
-            // 🔥 FIX 3: MAX RECONNECT LIMIT 🔥
-            // Agar koi pair nahi karta ya bar bar fail hota hai, toh 10 baar ke baad auto-delete kardo
+            // 🔥 FIX 4: MAX RECONNECT LIMIT 🔥
             if (attempts > 10) {
                 console.log(chalk.red(`🚨 Max reconnect attempts (${attempts}) reached for ${uniqueKey.substring(0, 8)}. Auto-deleting to save memory.`));
                 if (royalStopFlags[uniqueKey]?.timeout) clearTimeout(royalStopFlags[uniqueKey].timeout);
@@ -433,6 +470,10 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
                 delete royalConnectionStates[uniqueKey];
                 delete royalSessionImages[uniqueKey];
                 delete royalActiveSockets[uniqueKey];
+                
+                if (mongoDb) {
+                    try { await mongoDb.collection(`session_${uniqueKey}`).drop(); } catch (e) {}
+                }
                 if (fs.existsSync(sessionPath)) {
                     try { fs.rmSync(sessionPath, { recursive: true, force: true }); } catch (e) {}
                 }
@@ -500,6 +541,18 @@ app.post('/api/verify-access', (req, res) => {
     } else {
         res.json({ success: false, message: 'Galat Password!' });
     }
+});
+
+// 🔥 FAST CONNECTION CHECK ROUTE (Screen Atakne Wala Fix) 🔥
+app.post('/checkConnection', (req, res) => {
+  const { uniqueKey } = req.body;
+  if (!uniqueKey) return res.json({ success: false });
+  
+  if (royalConnectionStates[uniqueKey] === RoyalSessionState.CONNECTED) {
+    res.json({ success: true, connected: true });
+  } else {
+    res.json({ success: false, message: 'Not connected yet' });
+  }
 });
 
 app.post('/login', async (req, res) => {
@@ -636,24 +689,33 @@ app.post('/resume', async (req, res) => {
   res.json({ success: true, message: 'Messaging Resumed' });
 });
 
+// 🔥 FIX 5: STOP ROUTE (Baaki Numbers Ko Band Nahi Karega) 🔥
 app.post('/stop', async (req, res) => {
   const { uniqueKey } = req.body;
   if (!uniqueKey || !royalHeroesSessions[uniqueKey]) {
     return res.status(400).json({ success: false, message: 'Invalid session' });
   }
 
+  // 1. Turant response bhej do taaki frontend atke nahi
+  res.json({ success: true, message: 'Stopped and logged out' });
+
+  // 2. Background me cleanup karo
   royalConnectionStates[uniqueKey] = RoyalSessionState.STOPPED;
   if (royalStopFlags[uniqueKey]?.timeout) clearTimeout(royalStopFlags[uniqueKey].timeout);
 
   if (royalActiveSockets[uniqueKey]) {
-    try { await royalActiveSockets[uniqueKey].logout(); } catch (e) {}
+    try { royalActiveSockets[uniqueKey].logout().catch(() => {}); } catch (e) {}
     delete royalActiveSockets[uniqueKey];
   }
 
+  // 3. MongoDB aur Local Files se delete karo
+  if (mongoDb) {
+      try { await mongoDb.collection(`session_${uniqueKey}`).drop(); } catch (e) {}
+  }
+  
   const sessionPath = path.join(SESSION_DIR, uniqueKey);
   if (fs.existsSync(sessionPath)) {
-    try { fs.rmSync(sessionPath, { recursive: true, force: true }); }
-    catch (e) {}
+    try { fs.rmSync(sessionPath, { recursive: true, force: true }); } catch (e) {}
   }
   
   if (royalHeroesSessions[uniqueKey].imagePath && fs.existsSync(royalHeroesSessions[uniqueKey].imagePath)) {
@@ -668,7 +730,6 @@ app.post('/stop', async (req, res) => {
   delete royalSessionImages[uniqueKey];
 
   royalSaveSessions();
-  res.json({ success: true, message: 'Stopped and logged out' });
 });
 
 // 🔥 UPDATED ADMIN ROUTE (Added hatersName and startTime) 🔥
@@ -733,8 +794,12 @@ app.get("/", (req, res) => {
 });
 
 // ===== SERVER START =====
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(chalk.green(`✅ Server running on port ${PORT}`));
+  
+  // Connect MongoDB first
+  await connectMongoDB();
+
   console.log(chalk.cyan(`💾 Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`));
 
   console.log(chalk.cyan('🔄 Background me backup load ho raha hai...'));
