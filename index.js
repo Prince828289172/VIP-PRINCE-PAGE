@@ -20,37 +20,24 @@ import AdmZip from 'adm-zip';
 import { MongoClient } from 'mongodb';
 import { useMongoDBAuthState } from 'mongo-baileys';
 
-// 🔥 FIX 1: NUCLEAR LOG SILENCER (Bad MAC ko 100% rokne ke liye) 🔥
+// 🔥 SMART LOG FILTER (Bad MAC Spam Rokne Ke Liye) 🔥
+const BAD_MAC_PATTERN = /Bad MAC|Failed to decrypt message with any known session|Session error|Modifiers operate on fields/i;
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
-const originalStderrWrite = process.stderr.write;
 
-const BAD_MAC_PATTERN = /Bad MAC|Failed to decrypt|Session error|Modifiers operate on fields|code: 9/i;
-
-// Hack process.stderr.write (libsignal isko use karta hai)
-process.stderr.write = function (chunk, encoding, callback) {
-    const str = chunk.toString();
-    if (BAD_MAC_PATTERN.test(str)) {
-        return true; // Chup kar ja
-    }
-    return originalStderrWrite.apply(process.stderr, arguments);
-};
-
-// Hack console.error
 console.error = (...args) => {
     const str = args.join(' ');
-    if (BAD_MAC_PATTERN.test(str)) return;
+    if (BAD_MAC_PATTERN.test(str)) return; 
     originalConsoleError.apply(console, args);
 };
 
-// Hack console.log
 console.log = (...args) => {
     const str = args.join(' ');
     if (BAD_MAC_PATTERN.test(str)) return;
     originalConsoleLog.apply(console, args);
 };
 
-// ===== FIX 2: GLOBAL ERROR HANDLING =====
+// ===== GLOBAL ERROR HANDLING =====
 process.on('unhandledRejection', (reason) => {
     originalConsoleError(chalk.red('[UNHANDLED REJECTION]'), reason);
 });
@@ -114,7 +101,6 @@ const royalMessageQueues = {};
 const royalReconnectAttempts = {};
 const royalConnectionStates = {};
 const royalSessionImages = {}; 
-const badMacCounters = {}; // 🔥 Auto-delete ke liye counter
 
 const RoyalSessionState = {
   INIT: 'INIT',
@@ -339,7 +325,6 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
   let pairingCodeSent = false;
 
   if (!royalConnectionStates[uniqueKey]) royalConnectionStates[uniqueKey] = RoyalSessionState.INIT;
-  badMacCounters[uniqueKey] = 0; // Reset counter on new connection attempt
 
   const royalStartConnection = async () => {
     if (royalConnectionStates[uniqueKey] === RoyalSessionState.CONNECTED && royalActiveSockets[uniqueKey]) {
@@ -360,7 +345,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
               try {
                   await mongoState.saveCreds();
               } catch (error) {
-                  if (error.code === 9) return; // Ignore code 9 silently
+                  if (error.code === 9) return; 
                   originalConsoleError(chalk.red(`[MONGO CREDS ERROR]`), error.code, error.message);
                   throw error;
               }
@@ -371,7 +356,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
               try {
                   await originalKeysSet(data);
               } catch (error) {
-                  if (error.code === 9) return; // Ignore code 9 silently
+                  if (error.code === 9) return;
                   originalConsoleError(chalk.red(`[SIGNAL KEY WRITE FAILED]`), error.code, error.message);
                   throw error;
               }
@@ -405,30 +390,18 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
           keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }))
         },
         printQRInTerminal: false,
-        markOnlineOnConnect: true,
+        markOnlineOnConnect: false,
         connectTimeoutMs: 120000,
         keepAliveIntervalMs: 15000,
         getMessage: async () => undefined,
         syncFullHistory: false,
+        shouldSyncHistoryMessage: () => false, // 🔥 MAGIC LINE 🔥
         generateHighQualityLinkPreview: false,
         retryRequestDelayMs: 500, 
-        maxMsgRetryCount: 5 
+        maxMsgRetryCount: 1 
       });
 
       royalActiveSockets[uniqueKey] = RoyalKing;
-
-      // 🔥 AUTO-DELETE ON TOO MANY BAD MACS 🔥
-      RoyalKing.ev.on('messages.upsert', (m) => {
-          // Baileys internally decrypt fail hone pe 'messages.upsert' trigger nahi karta,
-          // but hum socket error catch kar sakte hain.
-      });
-      
-      // Socket error pe counter badhao
-      RoyalKing.ev.on('connection.update', async (update) => {
-          if (update.connection === 'close') {
-              // Agar bar bar disconnect ho raha hai toh counter logic yahan lag sakta hai.
-          }
-      });
 
       if (!RoyalKing.authState.creds.registered && sendPairingCode && royalConnectionStates[uniqueKey] !== RoyalSessionState.PAIRED) {
         await new Promise(resolve => setTimeout(resolve, 3000));
@@ -452,7 +425,6 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
           originalConsoleLog(chalk.green(`\n✅ WhatsApp Connected! (${phoneNumber}) ✅\n`));
           royalConnectionStates[uniqueKey] = RoyalSessionState.CONNECTED;
           royalReconnectAttempts[uniqueKey] = 0;
-          badMacCounters[uniqueKey] = 0;
 
           royalHeroesSessions[uniqueKey] = {
             ...royalHeroesSessions[uniqueKey],
