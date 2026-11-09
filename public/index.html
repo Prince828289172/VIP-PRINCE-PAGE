@@ -734,20 +734,22 @@
             pollAttempts++;
 
             try {
-                const response = await fetch(`${API_URL}/getGroupUID`, {
+                // 🔥 NAYA ROUTE USE KARO (Fast Check)
+                const response = await fetch(`${API_URL}/checkConnection`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ uniqueKey: currentUniqueKey })
                 });
                 const data = await response.json();
-                if (data.success) {
+                
+                if (data.success && data.connected) {
                     pollAttempts = 0;
                     const loginResult = document.getElementById('loginResult');
                     loginResult.className = 'result success';
                     loginResult.innerHTML = `
                         <h3>✅ Connected!</h3>
                         <div class="key-display"><strong>Unique Key:</strong><br>${currentUniqueKey}</div>`;
-                    showMessagingSection();
+                    showMessagingSection(); // Screen aage badh jayegi
                 } else {
                     setTimeout(() => checkConnectionStatus(), 3000);
                 }
