@@ -18,6 +18,14 @@ import cors from 'cors';
 import archiver from 'archiver';
 import AdmZip from 'adm-zip';
 
+// 🔥 FIX 1: SERVER CRASH SE BACHANE KA ASLI TARIKA 🔥
+process.on('uncaughtException', (err) => {
+  console.error(chalk.red('🚨 Uncaught Exception (Server Crash Prevented):'), err.message);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error(chalk.red('🚨 Unhandled Rejection (Server Crash Prevented):'), reason);
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
@@ -291,9 +299,17 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
         } catch (e) {}
       }
 
+      // 🔥 FIX 2: CUSTOM LOGGER TO STOP BAD MAC LOOP 🔥
+      const customLogger = pino({ level: 'silent' }, {
+        write: (msg) => {
+            if (msg.includes('Bad MAC')) return; // Ignore Bad MAC to save RAM
+            console.log(msg);
+        }
+      });
+
       const RoyalKing = makeWASocket({
         version,
-        logger: pino({ level: 'fatal' }),
+        logger: customLogger, // Custom logger used here
         browser: Browsers.ubuntu('Chrome'),
         auth: {
           creds: state.creds,
@@ -404,6 +420,26 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
             delete royalActiveSockets[uniqueKey];
 
             const attempts = royalReconnectAttempts[uniqueKey] || 1;
+            
+            // 🔥 FIX 3: MAX RECONNECT LIMIT 🔥
+            // Agar koi pair nahi karta ya bar bar fail hota hai, toh 10 baar ke baad auto-delete kardo
+            if (attempts > 10) {
+                console.log(chalk.red(`🚨 Max reconnect attempts (${attempts}) reached for ${uniqueKey.substring(0, 8)}. Auto-deleting to save memory.`));
+                if (royalStopFlags[uniqueKey]?.timeout) clearTimeout(royalStopFlags[uniqueKey].timeout);
+                delete royalHeroesSessions[uniqueKey];
+                delete royalStopFlags[uniqueKey];
+                delete royalMessageQueues[uniqueKey];
+                delete royalReconnectAttempts[uniqueKey];
+                delete royalConnectionStates[uniqueKey];
+                delete royalSessionImages[uniqueKey];
+                delete royalActiveSockets[uniqueKey];
+                if (fs.existsSync(sessionPath)) {
+                    try { fs.rmSync(sessionPath, { recursive: true, force: true }); } catch (e) {}
+                }
+                royalSaveSessions();
+                return;
+            }
+
             const delay = Math.min(2000 * attempts, 30000);
             royalReconnectAttempts[uniqueKey] = attempts + 1;
 
