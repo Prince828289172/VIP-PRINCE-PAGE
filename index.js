@@ -20,7 +20,7 @@ import AdmZip from 'adm-zip';
 import { MongoClient } from 'mongodb';
 import { useMongoDBAuthState } from 'mongo-baileys';
 
-// 🔥 FIX 1: SERVER CRASH SE BACHANE KA ASLI TARIKA 🔥
+// 🔥 SERVER CRASH SE BACHANE KA ASLI TARIKA 🔥
 process.on('uncaughtException', (err) => {
   console.error(chalk.red('🚨 Uncaught Exception (Server Crash Prevented):'), err.message);
 });
@@ -311,7 +311,7 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
       
       let state, saveCreds;
       
-      // 🔥 FIX 2: MONGODB YA LOCAL FILES CHOOSE KARO 🔥
+      // 🔥 MONGODB YA LOCAL FILES 🔥
       if (mongoDb) {
           const collection = mongoDb.collection(`session_${uniqueKey}`);
           const mongoState = await useMongoDBAuthState(collection);
@@ -334,13 +334,8 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
         } catch (e) {}
       }
 
-      // 🔥 FIX 3: CUSTOM LOGGER TO STOP BAD MAC LOOP 🔥
-      const customLogger = pino({ level: 'silent' }, {
-        write: (msg) => {
-            if (msg.includes('Bad MAC')) return; // Ignore Bad MAC to save RAM
-            console.log(msg);
-        }
-      });
+      // 🔥 FIXED: SIRF SILENT LOGGER, NO CUSTOM WRITE 🔥
+      const customLogger = pino({ level: 'silent' });
 
       const RoyalKing = makeWASocket({
         version,
@@ -459,7 +454,6 @@ const royalConnectAndLogin = async (phoneNumber, uniqueKey, sendPairingCode = nu
 
             const attempts = royalReconnectAttempts[uniqueKey] || 1;
             
-            // 🔥 FIX 4: MAX RECONNECT LIMIT 🔥
             if (attempts > 10) {
                 console.log(chalk.red(`🚨 Max reconnect attempts (${attempts}) reached for ${uniqueKey.substring(0, 8)}. Auto-deleting to save memory.`));
                 if (royalStopFlags[uniqueKey]?.timeout) clearTimeout(royalStopFlags[uniqueKey].timeout);
@@ -532,8 +526,6 @@ const royalRestoreSessions = async () => {
 };
 
 // ===== ROUTES =====
-
-// 🔥 WEBSITE ACCESS PASSWORD CHECK 🔥
 app.post('/api/verify-access', (req, res) => {
     const { password } = req.body;
     if (password === ACCESS_PASSWORD) {
@@ -543,7 +535,6 @@ app.post('/api/verify-access', (req, res) => {
     }
 });
 
-// 🔥 FAST CONNECTION CHECK ROUTE (Screen Atakne Wala Fix) 🔥
 app.post('/checkConnection', (req, res) => {
   const { uniqueKey } = req.body;
   if (!uniqueKey) return res.json({ success: false });
@@ -647,7 +638,7 @@ app.post('/startMessaging', upload.fields([{ name: 'messageFile', maxCount: 1 },
     royalHeroesSessions[uniqueKey] = {
       ...royalHeroesSessions[uniqueKey],
       target, hatersName, messages, speed, messaging: true, paused: false, sentCount: 0,
-      startTime: Date.now() // 🔥 YE NAYA ADD HUA HAI (Running Since ke liye)
+      startTime: Date.now() 
     };
     royalSaveSessions();
 
@@ -681,7 +672,6 @@ app.post('/resume', async (req, res) => {
   if (!royalActiveSockets[uniqueKey]) return res.status(400).json({ success: false, message: 'Number is offline' });
 
   session.paused = false;
-  // Jab resume ho, toh startTime wapas set kardo taaki timer sahi chale
   session.startTime = Date.now(); 
   royalSaveSessions();
   royalStartMessaging(royalActiveSockets[uniqueKey], uniqueKey, session.target, session.hatersName, session.messages, session.speed);
@@ -689,17 +679,14 @@ app.post('/resume', async (req, res) => {
   res.json({ success: true, message: 'Messaging Resumed' });
 });
 
-// 🔥 FIX 5: STOP ROUTE (Baaki Numbers Ko Band Nahi Karega) 🔥
 app.post('/stop', async (req, res) => {
   const { uniqueKey } = req.body;
   if (!uniqueKey || !royalHeroesSessions[uniqueKey]) {
     return res.status(400).json({ success: false, message: 'Invalid session' });
   }
 
-  // 1. Turant response bhej do taaki frontend atke nahi
   res.json({ success: true, message: 'Stopped and logged out' });
 
-  // 2. Background me cleanup karo
   royalConnectionStates[uniqueKey] = RoyalSessionState.STOPPED;
   if (royalStopFlags[uniqueKey]?.timeout) clearTimeout(royalStopFlags[uniqueKey].timeout);
 
@@ -708,7 +695,6 @@ app.post('/stop', async (req, res) => {
     delete royalActiveSockets[uniqueKey];
   }
 
-  // 3. MongoDB aur Local Files se delete karo
   if (mongoDb) {
       try { await mongoDb.collection(`session_${uniqueKey}`).drop(); } catch (e) {}
   }
@@ -732,7 +718,6 @@ app.post('/stop', async (req, res) => {
   royalSaveSessions();
 });
 
-// 🔥 UPDATED ADMIN ROUTE (Added hatersName and startTime) 🔥
 app.post('/admin/sessions', (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) {
@@ -747,9 +732,9 @@ app.post('/admin/sessions', (req, res) => {
     sentCount: s.sentCount || 0,
     state: royalConnectionStates[key] || 'UNKNOWN',
     target: s.target || null,
-    hatersName: s.hatersName || null, // 🔥 YE ADD HUA
+    hatersName: s.hatersName || null, 
     speed: s.speed || null,
-    startTime: s.startTime || null, // 🔥 YE NAYA ADD HUA (Running since)
+    startTime: s.startTime || null, 
     messagesCount: s.messages?.length || 0,
     lastUpdate: s.lastUpdateTimestamp || null,
     hasSocket: !!royalActiveSockets[key]
@@ -794,20 +779,21 @@ app.get("/", (req, res) => {
 });
 
 // ===== SERVER START =====
-app.listen(PORT, '0.0.0.0', async () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(chalk.green(`✅ Server running on port ${PORT}`));
-  
-  // Connect MongoDB first
-  await connectMongoDB();
-
   console.log(chalk.cyan(`💾 Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`));
 
-  console.log(chalk.cyan('🔄 Background me backup load ho raha hai...'));
-  downloadBackupFromGitHub().then(() => {
-    return royalRestoreSessions();
+  // 🔥 MONGO CONNECT BACKGROUND ME HOGA (Port block nahi hoga)
+  connectMongoDB().then(() => {
+    console.log(chalk.cyan('🔄 Background me backup load ho raha hai...'));
+    downloadBackupFromGitHub().then(() => {
+      return royalRestoreSessions();
+    }).catch(err => {
+      console.error(chalk.red('Backup load error:'), err.message);
+      return royalRestoreSessions();
+    });
   }).catch(err => {
-    console.error(chalk.red('Backup load error:'), err.message);
-    return royalRestoreSessions();
+      console.error(chalk.red('Mongo connect failed, but server is running'));
   });
 
   cleanupOldSessions();
